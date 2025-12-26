@@ -41,12 +41,15 @@ export interface AppSettings {
   accentColor: string;
   crossfadeSec: number;
   autoNormalize: boolean;
+  visualizationEnabled: boolean;
+  miniMode: boolean;
 }
 
 export enum NavigationTab {
   Home = 'main',
   Playlists = 'playlist',
   AllSongs = 'musics',
+  Queue = 'queue',
   Settings = 'settings',
   About = 'about'
 }
