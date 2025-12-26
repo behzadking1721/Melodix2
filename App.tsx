@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, AlertCircle, X } from 'lucide-react';
 import Sidebar from './components/Sidebar';
-import Player from './components/Player';
+import CompactPlayer from './components/CompactPlayer';
 import LibraryView from './components/LibraryView';
 import HomeView from './components/HomeView';
 import PlaylistView from './components/PlaylistView';
@@ -233,12 +233,16 @@ const App: React.FC = () => {
         </div>
       </MotionMain>
 
-      <Player 
-        currentSong={currentSong} isPlaying={isPlaying} onTogglePlay={handleTogglePlay} 
-        progress={progress} duration={currentSong?.duration || 0} onSeek={val => engine.seek(val)} 
-        volume={volume} onVolumeChange={(v) => { setVolume(v); engine.setVolume(v); }} onToggleEq={() => setIsEqOpen(!isEqOpen)} isEqOpen={isEqOpen} 
-        onNext={() => queueManager.next()} onPrev={() => queueManager.prev()} onToggleQueue={() => setActiveTab(NavigationTab.Queue)} 
-        visualizationEnabled={settings.visualizationEnabled} waveformEnabled={settings.waveformEnabled} 
+      <CompactPlayer 
+        currentSong={currentSong} 
+        isPlaying={isPlaying} 
+        onTogglePlay={handleTogglePlay} 
+        onNext={() => queueManager.next()}
+        onPrev={() => queueManager.prev()}
+        progress={progress}
+        duration={currentSong?.duration || 0}
+        onSeek={(val) => engine.seek(val)}
+        onShowLyrics={() => setActiveTab(NavigationTab.Home)}
       />
       
       <Equalizer settings={eqSettings} onChange={(s) => { setEqSettings(s); engine.setEQ(s); }} isOpen={isEqOpen} onClose={() => setIsEqOpen(false)} />
