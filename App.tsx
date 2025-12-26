@@ -13,13 +13,14 @@ import AboutView from './components/AboutView';
 import SmartPlaylistCreator from './components/SmartPlaylistCreator';
 import TitleBar from './components/TitleBar';
 import CrashView from './components/CrashView';
-import { Song, NavigationTab, EQSettings, Playlist, AppSettings, QueueState, AudioOutputMode } from './types';
+import { Song, NavigationTab, EQSettings, Playlist, AppSettings, QueueState, AudioOutputMode, ThemeDefinition } from './types';
 import { MOCK_SONGS } from './constants';
 import { AudioEngine } from './services/audioEngine';
 import { queueManager } from './services/queueManager';
 import { initDB } from './services/dbService';
 import { logger, LogLevel, LogCategory } from './services/logger';
 import { errorService, MelodixError, ErrorSeverity } from './services/errorService';
+import { THEME_PRESETS, ThemeManager } from './services/themeManager';
 
 const MotionMain = motion.main as any;
 const MotionDiv = motion.div as any;
@@ -88,7 +89,8 @@ const App: React.FC = () => {
         
         const defaultSettings: AppSettings = {
           minFileSizeMB: 2, minDurationSec: 30, launchOnBoot: false, isDefaultPlayer: true,
-          alwaysOnTop: false, themeMode: 'dark', floatingLyrics: false, accentColor: '#3b82f6',
+          alwaysOnTop: false, themeMode: 'dark', activeThemeId: 'classic-dark', customThemes: [], 
+          floatingLyrics: false, accentColor: '#3b82f6',
           crossfadeSec: 5, autoNormalize: true, visualizationEnabled: true, waveformEnabled: true,
           miniMode: false, gaplessPlayback: true, audioDevice: 'default',
           audioOutputMode: AudioOutputMode.Shared, targetSampleRate: 44100
@@ -97,7 +99,11 @@ const App: React.FC = () => {
         const currentSettings = savedSettings ? JSON.parse(savedSettings) : defaultSettings;
         setSettings(currentSettings);
         
-        // Sync AudioEngine with Saved Hardware Settings
+        // Dynamic Theme Application
+        const allThemes = [...THEME_PRESETS, ...(currentSettings.customThemes || [])];
+        const initialTheme = allThemes.find(t => t.id === currentSettings.activeThemeId) || THEME_PRESETS[0];
+        ThemeManager.applyTheme(initialTheme);
+        
         await engine.setOutputDevice(currentSettings.audioDevice, currentSettings.audioOutputMode);
         
         setIsReady(true);
@@ -109,13 +115,9 @@ const App: React.FC = () => {
     startup();
   }, []);
 
+  // Persistent Storage Sync
   useEffect(() => {
     if (!settings) return;
-    const root = document.documentElement;
-    root.style.setProperty('--accent-color', settings.accentColor);
-    root.style.setProperty('--accent-glow', `${settings.accentColor}33`);
-    if (settings.themeMode === 'light') root.classList.add('theme-light');
-    else root.classList.remove('theme-light');
     localStorage.setItem('melodix-settings-v10', JSON.stringify(settings));
   }, [settings]);
 
@@ -138,7 +140,7 @@ const App: React.FC = () => {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#0a0a0a] gap-6">
         <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }}>
-           <Zap className="text-[var(--accent-color)]" size={48} fill="currentColor" />
+           <Zap className="text-[#3b82f6]" size={48} fill="currentColor" />
         </motion.div>
         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700 animate-pulse">Initializing Neural Core...</p>
       </div>
@@ -146,7 +148,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden">
+    <div className="flex h-screen w-screen overflow-hidden bg-[var(--mica-bg)]">
       <TitleBar />
       <Sidebar 
         activeTab={activeTab} 

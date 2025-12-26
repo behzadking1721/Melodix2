@@ -64,13 +64,30 @@ export enum AudioOutputMode {
   Exclusive = 'exclusive'
 }
 
+export interface ThemeDefinition {
+  id: string;
+  name: string;
+  base: 'light' | 'dark';
+  background: string;
+  surface: string;
+  card: string;
+  primary: string;
+  secondary: string;
+  accent: string;
+  textPrimary: string;
+  textSecondary: string;
+  border: string;
+}
+
 export interface AppSettings {
   minFileSizeMB: number;
   minDurationSec: number;
   launchOnBoot: boolean;
   isDefaultPlayer: boolean;
   alwaysOnTop: boolean;
-  themeMode: 'auto' | 'light' | 'dark';
+  themeMode: 'auto' | 'light' | 'dark' | 'custom';
+  activeThemeId: string;
+  customThemes: ThemeDefinition[];
   floatingLyrics: boolean;
   accentColor: string;
   crossfadeSec: number;
@@ -79,7 +96,7 @@ export interface AppSettings {
   waveformEnabled: boolean;
   miniMode: boolean;
   gaplessPlayback: boolean;
-  audioDevice: string; // The specific Device ID
+  audioDevice: string;
   audioOutputMode: AudioOutputMode;
   targetSampleRate: number;
 }
