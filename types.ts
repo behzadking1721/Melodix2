@@ -35,6 +35,7 @@ export interface AppSettings {
   minDurationSec: number;
   launchOnBoot: boolean;
   isDefaultPlayer: boolean;
+  alwaysOnTop: boolean;
   themeMode: 'auto' | 'light' | 'dark';
   floatingLyrics: boolean;
 }

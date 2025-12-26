@@ -4,17 +4,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aurora Music Player</title>
+    <title>Melodix AI Player</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600;700&family=Vazirmatn:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --mica-bg: #202020;
-            --accent-color: #60cdff;
+            --mica-bg: #0f0f0f;
+            --accent-color: #3b82f6;
         }
         body {
             font-family: "Segoe UI Variable Display", "Segoe UI", "Vazirmatn", sans-serif;
-            background-color: transparent;
+            background-color: #000;
             color: #ffffff;
             overflow: hidden;
             margin: 0;
@@ -22,13 +22,13 @@
         }
         #root {
             height: 100%;
-            background-color: rgba(32, 32, 32, 0.85);
-            backdrop-filter: blur(50px) saturate(150%);
+            background-color: rgba(15, 15, 15, 0.8);
+            backdrop-filter: blur(60px) saturate(180%);
         }
         .mica {
-            background: rgba(45, 45, 45, 0.4);
-            backdrop-filter: blur(30px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(30, 30, 30, 0.4);
+            backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
         .titlebar-drag {
             -webkit-app-region: drag;
@@ -36,21 +36,22 @@
         .no-drag {
             -webkit-app-region: no-drag;
         }
-        /* WinUI Slider Styling */
-        input[type="range"] {
-            appearance: none;
-            background: rgba(255,255,255,0.2);
-            height: 4px;
-            border-radius: 2px;
+        /* Melodix Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
         }
-        input[type="range"]::-webkit-slider-thumb {
-            appearance: none;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
             background: var(--accent-color);
-            cursor: pointer;
-            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        .aurora-gradient {
+            background: radial-gradient(circle at center, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
         }
     </style>
 <script type="importmap">

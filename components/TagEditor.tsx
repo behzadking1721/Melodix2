@@ -20,7 +20,8 @@ const TagEditor: React.FC<TagEditorProps> = ({ song, onClose, onSave }) => {
     setIsFixing(true);
     const suggestions = await suggestSongTags(editedSong);
     // Also fetch lyrics for embedding
-    const lyrics = await fetchLyrics(suggestions.title || song.title, suggestions.artist || song.artist);
+    // Fix: Added the required third argument (songId) to fetchLyrics
+    const lyrics = await fetchLyrics(suggestions.title || song.title, suggestions.artist || song.artist, song.id);
     setEditedSong(prev => ({ ...prev, ...suggestions }));
     setIsFixing(false);
   };
