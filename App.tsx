@@ -10,6 +10,7 @@ import HomeView from './components/HomeView';
 import PlaylistView from './components/PlaylistView';
 import Equalizer from './components/Equalizer';
 import SettingsView from './components/SettingsView';
+import AboutView from './components/AboutView';
 import SmartPlaylistCreator from './components/SmartPlaylistCreator';
 import TitleBar from './components/TitleBar';
 import { Song, NavigationTab, EQSettings, Playlist, AppSettings } from './types';
@@ -53,10 +54,6 @@ const App: React.FC = () => {
   const [isEqOpen, setIsEqOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
-    const saved = localStorage.getItem('melodix-search-history');
-    return saved ? JSON.parse(saved) : [];
-  });
   const [snackbar, setSnackbar] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
   
   const [settings, setSettings] = useState<AppSettings>(() => {
@@ -90,9 +87,8 @@ const App: React.FC = () => {
     localStorage.setItem('melodix-queue-v3', JSON.stringify(queue));
     localStorage.setItem('melodix-playlists-v5', JSON.stringify(playlists));
     localStorage.setItem('melodix-settings-v10', JSON.stringify(settings));
-    localStorage.setItem('melodix-search-history', JSON.stringify(searchHistory));
     document.documentElement.style.setProperty('--accent-color', settings.accentColor);
-  }, [songs, recentSongs, queue, settings, playlists, searchHistory]);
+  }, [songs, recentSongs, queue, settings, playlists]);
 
   const showSnackbar = (msg: string, type: 'success' | 'error' = 'success') => {
     setSnackbar({ msg, type });
@@ -125,11 +121,20 @@ const App: React.FC = () => {
     setQueue([song]);
     setQueueIndex(0);
     setIsPlaying(true);
-    // Add to search history if matching query
-    if (searchQuery && !searchHistory.includes(searchQuery)) {
-      setSearchHistory(prev => [searchQuery, ...prev].slice(0, 5));
-    }
     setIsSearchFocused(false);
+  };
+
+  // Fix: Implemented handlePlayPlaylist to resolve the compilation error
+  const handlePlayPlaylist = (playlist: Playlist) => {
+    const playlistSongs = playlist.songIds
+      .map(id => songs.find(s => s.id === id))
+      .filter((s): s is Song => !!s);
+    
+    if (playlistSongs.length > 0) {
+      setQueue(playlistSongs);
+      setQueueIndex(0);
+      setIsPlaying(true);
+    }
   };
 
   const handleCreatePlaylist = (newPlaylist: Playlist) => {
@@ -138,32 +143,7 @@ const App: React.FC = () => {
     showSnackbar(`Playlist "${newPlaylist.name}" created!`);
   };
 
-  const handleDeletePlaylist = (id: string) => {
-    setPlaylists(playlists.filter(p => p.id !== id));
-    setSelectedPlaylistId(null);
-    showSnackbar("Playlist removed");
-  };
-
-  const handlePlayPlaylist = (playlist: Playlist) => {
-    const pSongs = songs.filter(s => playlist.songIds.includes(s.id));
-    if (pSongs.length > 0) {
-      setQueue(pSongs);
-      setQueueIndex(0);
-      setIsPlaying(true);
-      showSnackbar(`Streaming: ${playlist.name}`);
-    }
-  };
-
-  const filteredSongs = useMemo(() => {
-    if (!searchQuery) return [];
-    const q = searchQuery.toLowerCase();
-    return songs.filter(s => 
-      s.title.toLowerCase().includes(q) || 
-      s.artist.toLowerCase().includes(q)
-    ).slice(0, 5);
-  }, [songs, searchQuery]);
-
-  // Audio Engine logic
+  // Audio Engine logic (Stage 1)
   useEffect(() => {
     if (!audioPrimary.current) audioPrimary.current = new Audio();
     const active = audioPrimary.current;
@@ -173,6 +153,9 @@ const App: React.FC = () => {
       active.volume = volume;
       if (isPlaying) active.play().catch(() => setIsPlaying(false));
       setRecentSongs(prev => [currentSong, ...prev.filter(s => s.id !== currentSong.id)].slice(0, 20));
+      
+      active.ontimeupdate = () => setProgress(active.currentTime);
+      active.onended = () => handleNext();
     }
     if (currentSong) handleSyncMetadata(currentSong);
   }, [currentSong?.id]);
@@ -197,55 +180,15 @@ const App: React.FC = () => {
       <motion.main layout className={`flex-1 h-full relative overflow-hidden ${settings.miniMode ? 'pt-0' : 'pt-10'}`}>
         {!settings.miniMode && (
           <div className="fixed top-12 right-10 flex items-center gap-2 z-[300]">
-             {/* Enhanced Smart Search */}
              <div className="relative group">
                <input 
                  type="text" value={searchQuery} 
                  onChange={(e) => setSearchQuery(e.target.value)}
                  onFocus={() => setIsSearchFocused(true)}
                  onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-                 placeholder="Search Intelligence..." className="bg-black/40 border border-white/5 rounded-xl py-2 px-4 text-xs font-bold focus:w-80 transition-all w-48 backdrop-blur-3xl focus:border-blue-500/50 outline-none h-10 pr-10"
+                 placeholder="Search Intelligence..." className="bg-black/40 border border-white/5 rounded-xl py-2 px-4 text-xs font-bold focus:w-80 transition-all w-48 backdrop-blur-3xl outline-none h-10 pr-10"
                />
                <Search size={14} className="absolute right-3 top-3 text-zinc-500 pointer-events-none group-focus-within:text-blue-500 transition-colors" />
-               
-               <AnimatePresence>
-                 {isSearchFocused && (searchQuery || searchHistory.length > 0) && (
-                   <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute top-12 right-0 w-80 bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl backdrop-blur-3xl overflow-hidden p-4 space-y-4 z-[400]"
-                   >
-                     {searchQuery && filteredSongs.length > 0 && (
-                       <div className="space-y-2">
-                         <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest px-2">Suggestions</p>
-                         {filteredSongs.map(s => (
-                           <div key={s.id} onClick={() => handleSongSelect(s)} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-xl cursor-pointer group transition-all">
-                             <img src={s.coverUrl} className="w-8 h-8 rounded-lg object-cover" alt="" />
-                             <div className="min-w-0">
-                               <p className="text-xs font-bold text-white truncate">{s.title}</p>
-                               <p className="text-[9px] text-zinc-500 font-black uppercase truncate">{s.artist}</p>
-                             </div>
-                             <Zap size={10} className="ml-auto opacity-0 group-hover:opacity-100 text-blue-500" />
-                           </div>
-                         ))}
-                       </div>
-                     )}
-
-                     {searchHistory.length > 0 && (
-                       <div className="space-y-2">
-                         <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest px-2">Recent History</p>
-                         {searchHistory.map((h, idx) => (
-                           <div key={idx} onClick={() => setSearchQuery(h)} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-xl cursor-pointer text-xs font-bold text-zinc-400 hover:text-white transition-all">
-                             <Clock size={12} className="text-zinc-600" />
-                             <span>{h}</span>
-                           </div>
-                         ))}
-                       </div>
-                     )}
-                   </motion.div>
-                 )}
-               </AnimatePresence>
              </div>
 
              <button 
@@ -266,32 +209,22 @@ const App: React.FC = () => {
           <AnimatePresence mode="wait">
             {activeTab === NavigationTab.Home && (
               <HomeView 
-                key="home" 
-                currentSong={currentSong} 
-                lyrics={currentSong ? lyricsCache[currentSong.id] : ''} 
-                isLoadingLyrics={isLyricsLoading} 
-                currentTime={progress} 
-                onSongSelect={handleSongSelect}
-                recentSongs={recentSongs}
-                library={songs}
+                key="home" currentSong={currentSong} lyrics={currentSong ? lyricsCache[currentSong.id] : ''} 
+                isLoadingLyrics={isLyricsLoading} currentTime={progress} onSongSelect={handleSongSelect}
+                recentSongs={recentSongs} library={songs}
               />
             )}
             {activeTab === NavigationTab.AllSongs && <LibraryView key="lib" songs={songs} onSongSelect={handleSongSelect} currentSongId={currentSong?.id} onUpdateSong={handleUpdateSong} onAddToQueue={(s) => setQueue([...queue, s])} />}
             {activeTab === NavigationTab.Playlists && (
               <PlaylistView 
-                playlists={playlists} 
-                songs={songs}
-                recentSongs={recentSongs}
-                selectedPlaylistId={selectedPlaylistId}
-                onSelectPlaylist={setSelectedPlaylistId}
-                onPlayPlaylist={handlePlayPlaylist}
-                onDeletePlaylist={handleDeletePlaylist}
-                onCreatePlaylist={() => setIsCreatorOpen(true)}
-                onSongSelect={handleSongSelect}
-                currentSongId={currentSong?.id}
+                playlists={playlists} songs={songs} recentSongs={recentSongs}
+                selectedPlaylistId={selectedPlaylistId} onSelectPlaylist={setSelectedPlaylistId}
+                onPlayPlaylist={handlePlayPlaylist} onDeletePlaylist={(id) => setPlaylists(p => p.filter(pl => pl.id !== id))}
+                onCreatePlaylist={() => setIsCreatorOpen(true)} onSongSelect={handleSongSelect} currentSongId={currentSong?.id}
               />
             )}
             {activeTab === NavigationTab.Settings && <SettingsView settings={settings} onUpdate={setSettings} />}
+            {activeTab === NavigationTab.About && <AboutView />}
             {activeTab === NavigationTab.Queue && (
                <div className="p-12 h-full overflow-y-auto custom-scrollbar">
                  <div className="flex justify-between items-center mb-10">
@@ -299,27 +232,18 @@ const App: React.FC = () => {
                      <h2 className="text-5xl font-black tracking-tighter text-white">Smart Queue</h2>
                      <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest mt-2">Active Asset Stream</p>
                    </div>
-                   <div className="flex gap-2">
-                     <button onClick={() => setQueue([...queue].sort(() => Math.random() - 0.5))} className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-zinc-400 transition-all"><Shuffle size={18}/></button>
-                     <button onClick={() => setQueue([currentSong!])} className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-red-400 transition-all"><Trash2 size={18}/></button>
-                   </div>
                  </div>
-                 
                  <Reorder.Group axis="y" values={queue} onReorder={setQueue} className="space-y-2 pb-40">
                     {queue.map((s, i) => (
                       <Reorder.Item 
-                        key={s.id + i} 
-                        value={s}
-                        className={`group flex items-center gap-4 p-4 rounded-3xl cursor-grab active:cursor-grabbing border transition-all ${i === queueIndex ? 'bg-blue-600/20 border-blue-500/20 shadow-2xl' : 'bg-white/[0.02] border-white/5 hover:bg-white/5'}`}
+                        key={s.id + i} value={s}
+                        className={`group flex items-center gap-4 p-4 rounded-3xl cursor-grab border transition-all ${i === queueIndex ? 'bg-blue-600/20 border-blue-500/20' : 'bg-white/[0.02] border-white/5 hover:bg-white/5'}`}
                       >
-                        <div className="w-10 text-[10px] font-black text-zinc-600 group-hover:text-blue-500 transition-colors">{i + 1}</div>
-                        <img src={s.coverUrl} className="w-12 h-12 rounded-2xl object-cover shadow-lg" alt="" />
+                        <div className="w-10 text-[10px] font-black text-zinc-600">{i + 1}</div>
+                        <img src={s.coverUrl} className="w-12 h-12 rounded-2xl object-cover" alt="" />
                         <div className="flex-1 min-w-0">
                           <h4 className={`font-bold text-sm truncate ${i === queueIndex ? 'text-blue-400' : 'text-white'}`}>{s.title}</h4>
                           <p className="text-[10px] text-zinc-500 font-black uppercase truncate">{s.artist}</p>
-                        </div>
-                        <div className="text-[10px] font-mono text-zinc-600">
-                          {Math.floor(s.duration / 60)}:{(s.duration % 60).toString().padStart(2, '0')}
                         </div>
                       </Reorder.Item>
                     ))}
@@ -333,9 +257,9 @@ const App: React.FC = () => {
       {!settings.miniMode && (
         <Player 
           currentSong={currentSong} isPlaying={isPlaying} onTogglePlay={() => setIsPlaying(!isPlaying)}
-          progress={progress} duration={currentSong?.duration || 0} onSeek={val => { 
-            if (audioPrimary.current) audioPrimary.current.currentTime = val; 
-          }} volume={volume} onVolumeChange={setVolume} onToggleEq={() => setIsEqOpen(!isEqOpen)} isEqOpen={isEqOpen}
+          progress={progress} duration={currentSong?.duration || 0} onSeek={val => { if (audioPrimary.current) audioPrimary.current.currentTime = val; }} 
+          volume={volume} onVolumeChange={(v) => { setVolume(v); if(audioPrimary.current) audioPrimary.current.volume = v; }} 
+          onToggleEq={() => setIsEqOpen(!isEqOpen)} isEqOpen={isEqOpen}
           onNext={handleNext} onPrev={handlePrev} onToggleQueue={() => setActiveTab(NavigationTab.Queue)}
         />
       )}
@@ -345,12 +269,7 @@ const App: React.FC = () => {
       
       <AnimatePresence>
         {snackbar && (
-          <motion.div 
-            initial={{ opacity: 0, y: 50, x: '-50%' }} 
-            animate={{ opacity: 1, y: 0, x: '-50%' }} 
-            exit={{ opacity: 0, y: 50, x: '-50%' }} 
-            className={`fixed bottom-32 left-1/2 px-6 py-3 rounded-2xl font-bold shadow-2xl z-[1000] flex items-center gap-3 border ${snackbar.type === 'error' ? 'bg-red-600 border-red-500 text-white' : 'bg-blue-600 border-blue-500 text-white'}`}
-          >
+          <motion.div initial={{ opacity: 0, y: 50, x: '-50%' }} animate={{ opacity: 1, y: 0, x: '-50%' }} exit={{ opacity: 0, y: 50, x: '-50%' }} className={`fixed bottom-32 left-1/2 px-6 py-3 rounded-2xl font-bold shadow-2xl z-[1000] flex items-center gap-3 border ${snackbar.type === 'error' ? 'bg-red-600 border-red-500 text-white' : 'bg-blue-600 border-blue-500 text-white'}`}>
             {snackbar.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
             {snackbar.msg}
           </motion.div>
