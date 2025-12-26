@@ -1,7 +1,7 @@
 
 /**
- * Melodix Pro Audio Engine - Stage 4
- * Integrated FFT Analysis and Waveform Generation logic.
+ * Melodix Pro Audio Engine - Stage 4 (Visualization Engine)
+ * Integrated FFT Analysis and Advanced Waveform Decoding.
  */
 
 import { EQSettings, Song } from "../types";
@@ -27,10 +27,11 @@ export class AudioEngine {
   private constructor() {
     this.context = new (window.AudioContext || (window as any).webkitAudioContext)();
     
-    // Analyser Node for Spectrum Visualization
+    // Analyser Node for FFT (Spectrum Visualization)
+    // Inspiration: NAudio.Dsp FFT implementation
     this.analyser = this.context.createAnalyser();
-    this.analyser.fftSize = 256; // High precision for spectrum bars
-    this.analyser.smoothingTimeConstant = 0.8;
+    this.analyser.fftSize = 256; 
+    this.analyser.smoothingTimeConstant = 0.85; // Smooth transitions between frequency states
 
     this.limiter = this.context.createDynamicsCompressor();
     this.limiter.threshold.setValueAtTime(-1, this.context.currentTime);
@@ -57,7 +58,9 @@ export class AudioEngine {
       lastNode.connect(this.eqNodes[i]);
       lastNode = this.eqNodes[i];
     }
-    lastNode.connect(this.analyser); // Connect analyser before limiter/master
+    
+    // Audio Pipeline: Source -> EQ -> Analyser -> Limiter -> Master
+    lastNode.connect(this.analyser);
     this.analyser.connect(this.limiter);
     this.limiter.connect(this.masterGain);
     this.masterGain.connect(this.context.destination);
@@ -83,13 +86,14 @@ export class AudioEngine {
   }
 
   /**
-   * Generates or retrieves waveform peaks for a specific song URL.
-   * Decodes audio buffer to extract magnitude data.
+   * Background Waveform Processor
+   * Decodes audio stream and extracts amplitude peaks.
    */
   public async getWaveformData(url: string, bars: number = 100): Promise<number[]> {
     if (this.waveformCache.has(url)) return this.waveformCache.get(url)!;
 
     try {
+      // Run decoding in background using Web Audio decodeAudioData (highly optimized)
       const response = await fetch(url);
       const arrayBuffer = await response.arrayBuffer();
       const audioBuffer = await this.context.decodeAudioData(arrayBuffer);
@@ -110,11 +114,14 @@ export class AudioEngine {
       this.waveformCache.set(url, peaks);
       return peaks;
     } catch (e) {
-      console.warn("Waveform extraction failed, using fallback simulation", e);
-      return Array.from({ length: bars }, () => Math.random() * 0.8 + 0.1);
+      console.warn("Waveform decoding failed, using simulated fallback.", e);
+      return Array.from({ length: bars }, () => 0.1 + Math.random() * 0.4);
     }
   }
 
+  /**
+   * Provides real-time frequency data for UI binding.
+   */
   public getFrequencyData(): Uint8Array {
     const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
     this.analyser.getByteFrequencyData(dataArray);

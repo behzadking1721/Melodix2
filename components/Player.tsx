@@ -37,19 +37,31 @@ const Player: React.FC<PlayerProps> = ({
   const waveformRef = useRef<HTMLCanvasElement>(null);
   const engine = AudioEngine.getInstance();
   const [wavePeaks, setWavePeaks] = useState<number[]>([]);
+  
+  // Optimization: Throttling control
+  const lastUpdateRef = useRef<number>(0);
+  const FPS_LIMIT = 30; // Throttled to 30FPS to save CPU/GPU resources
+  const FRAME_INTERVAL = 1000 / FPS_LIMIT;
 
-  // Real-time Spectrum Visualizer
+  // Real-time Spectrum Visualizer with Throttle
   useEffect(() => {
     if (!isPlaying || !spectrumRef.current || !visualizationEnabled) return;
+    
     const canvas = spectrumRef.current;
     const ctx = canvas.getContext('2d')!;
     let animationFrame: number;
 
-    const render = () => {
+    const render = (time: number) => {
+      if (time - lastUpdateRef.current < FRAME_INTERVAL) {
+        animationFrame = requestAnimationFrame(render);
+        return;
+      }
+      lastUpdateRef.current = time;
+
       const dataArray = engine.getFrequencyData();
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
-      const bars = 40;
+      const bars = 30;
       const barWidth = canvas.width / bars;
       
       const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
@@ -62,34 +74,34 @@ const Player: React.FC<PlayerProps> = ({
         const h = val * canvas.height * 0.9;
         
         ctx.fillStyle = gradient;
-        ctx.globalAlpha = 0.3 + val * 0.7;
+        ctx.globalAlpha = 0.4 + val * 0.6;
         
-        ctx.beginPath();
         const x = i * barWidth;
         const y = canvas.height - h;
-        const w = barWidth - 1.5;
-        const r = 2;
+        const w = barWidth - 2;
         
-        ctx.roundRect(x, y, w, h, [r, r, 0, 0]);
+        // Draw rounded bars
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, [2, 2, 0, 0]);
         ctx.fill();
       }
       animationFrame = requestAnimationFrame(render);
     };
 
-    render();
+    animationFrame = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animationFrame);
   }, [isPlaying, visualizationEnabled]);
 
-  // Real Waveform Calculation
+  // Waveform Calculation (Background Process)
   useEffect(() => {
     if (currentSong && waveformEnabled) {
-      engine.getWaveformData(currentSong.url, 150).then(setWavePeaks);
+      engine.getWaveformData(currentSong.url, 120).then(setWavePeaks);
     } else {
       setWavePeaks([]);
     }
   }, [currentSong?.id, waveformEnabled]);
 
-  // Waveform rendering
+  // High-Quality Mirrored Waveform Rendering
   useEffect(() => {
     if (!waveformRef.current) return;
     const canvas = waveformRef.current;
@@ -101,17 +113,23 @@ const Player: React.FC<PlayerProps> = ({
 
     if (waveformEnabled && wavePeaks.length > 0) {
       const barWidth = width / wavePeaks.length;
+      const centerY = height / 2;
+      
       wavePeaks.forEach((peak, i) => {
-        const h = peak * height * 0.8;
+        const h = peak * (height / 2) * 0.85;
         const isPlayed = (i / wavePeaks.length) < (progress / duration);
         
         ctx.fillStyle = isPlayed ? 'var(--accent-color)' : 'rgba(255, 255, 255, 0.15)';
+        
         const x = i * barWidth;
-        const y = (height - h) / 2;
-        ctx.fillRect(x, y, barWidth - 1, h);
+        // Mirrored bar drawing (DAW Style)
+        ctx.fillRect(x, centerY - h, barWidth - 1, h); // Top half
+        ctx.globalAlpha = 0.4;
+        ctx.fillRect(x, centerY, barWidth - 1, h * 0.6); // Bottom reflection
+        ctx.globalAlpha = 1.0;
       });
     } else {
-      // Fallback simple line if waveform is disabled
+      // Classic fallback seeker line
       ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
       ctx.fillRect(0, height / 2 - 1, width, 2);
       ctx.fillStyle = 'var(--accent-color)';
@@ -157,8 +175,9 @@ const Player: React.FC<PlayerProps> = ({
         <div className="w-full flex items-center gap-3 group relative">
           <span className="text-[9px] text-zinc-500 font-mono w-8 text-right">{formatTime(progress)}</span>
           
-          <div className="flex-1 relative h-6 flex items-center">
-            <canvas ref={waveformRef} width={600} height={20} className="absolute inset-0 w-full h-full pointer-events-none" />
+          <div className="flex-1 relative h-10 flex items-center">
+            {/* Waveform Seeker Canvas */}
+            <canvas ref={waveformRef} width={600} height={40} className="absolute inset-0 w-full h-full pointer-events-none" />
             <input 
               type="range" min="0" max={duration} value={progress}
               onChange={(e) => onSeek(Number(e.target.value))}
@@ -172,8 +191,8 @@ const Player: React.FC<PlayerProps> = ({
 
       <div className="flex items-center justify-end gap-5 w-1/4">
         {visualizationEnabled && (
-          <div className="w-20 h-8 hidden xl:block">
-             <canvas ref={spectrumRef} width={80} height={32} className="w-full h-full opacity-70" />
+          <div className="w-24 h-10 hidden xl:block">
+             <canvas ref={spectrumRef} width={100} height={40} className="w-full h-full opacity-80" />
           </div>
         )}
 

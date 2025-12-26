@@ -1,156 +1,234 @@
 
 import React, { useState, useMemo } from 'react';
-import { Song, Playlist } from '../types';
-import { Play, FolderOpen, CheckCircle, FileText, LayoutGrid, List, PlusCircle, MoreVertical, Edit3, SearchX, Zap } from 'lucide-react';
+import { Song, ArtistViewModel, AlbumViewModel } from '../types';
+import { 
+  Play, Search, LayoutGrid, List, PlusCircle, 
+  Edit3, SearchX, Mic2, Disc, ArrowLeft, 
+  MoreVertical, Music2, Clock, ChevronRight, Zap
+} from 'lucide-react';
 import TagEditor from './TagEditor';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface LibraryViewProps {
   songs: Song[];
-  playlists?: Playlist[];
   onSongSelect: (song: Song) => void;
-  onAddToQueue?: (song: Song) => void;
+  onAddNext: (song: Song) => void;
+  onAddToQueue: (song: Song) => void;
   currentSongId?: string;
   onUpdateSong: (updatedSong: Song) => void;
-  isPlaylistView?: boolean;
-  onPlaylistSelect?: (id: string) => void;
 }
 
-const LibraryView: React.FC<LibraryViewProps> = ({ 
-  songs, playlists = [], onSongSelect, onAddToQueue, currentSongId, onUpdateSong, isPlaylistView = false, onPlaylistSelect
-}) => {
-  const [editingSong, setEditingSong] = useState<Song | null>(null);
-  const [isGridView, setIsGridView] = useState(true);
-  const [visibleCount, setVisibleCount] = useState(50);
+type DrillDownPath = {
+  type: 'root' | 'artist' | 'album';
+  id: string | null;
+  label: string;
+};
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const target = e.currentTarget;
-    if (target.scrollHeight - target.scrollTop <= target.clientHeight + 100) {
-      setVisibleCount(prev => Math.min(prev + 50, songs.length));
+const LibraryView: React.FC<LibraryViewProps> = ({ 
+  songs, onSongSelect, onAddNext, onAddToQueue, currentSongId, onUpdateSong
+}) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [path, setPath] = useState<DrillDownPath>({ type: 'root', id: null, label: 'Library' });
+  const [isGridView, setIsGridView] = useState(true);
+  const [editingSong, setEditingSong] = useState<Song | null>(null);
+
+  // Grouping Logic - Artist -> Album -> Track
+  const artists = useMemo(() => {
+    const artistMap: Record<string, ArtistViewModel> = {};
+    
+    songs.forEach(song => {
+      if (!artistMap[song.artist]) {
+        artistMap[song.artist] = {
+          name: song.artist,
+          albums: [],
+          songCount: 0,
+          coverUrl: song.coverUrl
+        };
+      }
+      artistMap[song.artist].songCount++;
+      
+      let album = artistMap[song.artist].albums.find(a => a.name === song.album);
+      if (!album) {
+        album = {
+          name: song.album,
+          artist: song.artist,
+          year: song.year,
+          coverUrl: song.coverUrl,
+          songs: [],
+          totalDuration: 0
+        };
+        artistMap[song.artist].albums.push(album);
+      }
+      album.songs.push(song);
+      album.totalDuration += song.duration;
+    });
+
+    return Object.values(artistMap).sort((a, b) => a.name.localeCompare(b.name));
+  }, [songs]);
+
+  // Search Logic
+  const filteredData = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    if (!query) return null;
+    return songs.filter(s => 
+      s.title.toLowerCase().includes(query) ||
+      s.artist.toLowerCase().includes(query) ||
+      s.album.toLowerCase().includes(query) ||
+      s.genre.toLowerCase().includes(query)
+    );
+  }, [songs, searchQuery]);
+
+  const currentArtist = useMemo(() => 
+    path.type !== 'root' ? artists.find(a => a.name === path.id) : null
+  , [artists, path]);
+
+  const currentAlbum = useMemo(() => 
+    path.type === 'album' ? currentArtist?.albums.find(a => a.name === path.id) : null
+  , [currentArtist, path]);
+
+  const handleBack = () => {
+    if (path.type === 'album') {
+      setPath({ type: 'artist', id: currentArtist?.name || null, label: currentArtist?.name || '' });
+    } else {
+      setPath({ type: 'root', id: null, label: 'Library' });
     }
   };
 
-  const displayedSongs = useMemo(() => songs.slice(0, visibleCount), [songs, visibleCount]);
-
-  if (songs.length === 0) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center space-y-8 animate-in fade-in duration-1000">
-        <div className="relative">
-          <SearchX size={120} className="text-zinc-800" />
-          <div className="absolute inset-0 flex items-center justify-center text-blue-500 animate-pulse">
-             <Zap size={40} fill="currentColor" />
-          </div>
-        </div>
-        <div className="text-center space-y-2" dir="rtl">
-           <h2 className="text-3xl font-black text-white">کتابخانه شما خالیست</h2>
-           <p className="text-zinc-500 font-bold max-w-sm">برای شروع، پوشه حاوی فایل‌های موسیقی خود را انتخاب کنید تا ایندکس‌گذاری هوشمند آغاز شود.</p>
-        </div>
-        <button className="px-10 py-4 bg-blue-600 text-white rounded-3xl font-black shadow-2xl shadow-blue-600/20 hover:scale-105 active:scale-95 transition-all">
-          اسکن و افزودن موسیقی
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="h-full overflow-y-auto custom-scrollbar" onScroll={handleScroll}>
-      <div className="p-10 pb-32">
-        <div className="flex items-center justify-between mb-12" dir="rtl">
+    <div className="h-full flex flex-col bg-transparent overflow-hidden">
+      {/* Search & Breadcrumbs */}
+      <div className="p-8 pb-4 flex items-center justify-between gap-6" dir="rtl">
+        <div className="flex items-center gap-4">
+          {path.type !== 'root' && (
+            <button onClick={handleBack} className="p-2 hover:bg-white/5 rounded-xl transition-all">
+              <ArrowLeft size={20} className="text-zinc-400" />
+            </button>
+          )}
           <div>
-            <h2 className="text-6xl font-black mb-2 tracking-tighter text-white">کتابخانه موسیقی</h2>
-            <div className="flex items-center gap-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest">
-              <span className="flex items-center gap-2"><FolderOpen size={14} className="text-blue-500" /> Assets Managed</span>
-              <span className="px-3 py-1 bg-white/5 border border-white/5 rounded-lg">{songs.length} Tracks Indexed</span>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-6 no-drag">
-             <button className="px-6 py-2.5 bg-blue-600/10 border border-blue-500/20 text-blue-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all">
-               Scan Folders
-             </button>
-            <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 shadow-inner">
-              <button onClick={() => setIsGridView(false)} className={`p-2.5 rounded-xl transition-all ${!isGridView ? 'bg-white text-black shadow-2xl scale-110' : 'text-zinc-500 hover:text-white'}`}><List size={18} /></button>
-              <button onClick={() => setIsGridView(true)} className={`p-2.5 rounded-xl transition-all ${isGridView ? 'bg-white text-black shadow-2xl scale-110' : 'text-zinc-500 hover:text-white'}`}><LayoutGrid size={18} /></button>
-            </div>
+            <h2 className="text-4xl font-black text-white tracking-tighter">
+              {path.label}
+            </h2>
+            <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mt-1">
+              {path.type === 'root' ? `${artists.length} ARTISTS` : path.type === 'artist' ? `${currentArtist?.albums.length} ALBUMS` : `${currentAlbum?.songs.length} TRACKS`}
+            </p>
           </div>
         </div>
 
-        {isGridView ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-8">
-            {displayedSongs.map(song => (
-              <motion.div 
-                key={song.id} 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="group relative"
-              >
+        <div className="flex items-center gap-4">
+          <div className="relative group">
+            <Search size={14} className="absolute right-4 top-3.5 text-zinc-500 pointer-events-none group-focus-within:text-blue-500 transition-colors" />
+            <input 
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="جستجوی هوشمند..."
+              className="bg-white/5 border border-white/5 rounded-2xl py-3 pr-10 pl-4 text-xs font-bold focus:w-80 w-48 transition-all outline-none"
+            />
+          </div>
+          <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
+            <button onClick={() => setIsGridView(true)} className={`p-2 rounded-lg transition-all ${isGridView ? 'bg-white text-black' : 'text-zinc-500'}`}><LayoutGrid size={16}/></button>
+            <button onClick={() => setIsGridView(false)} className={`p-2 rounded-lg transition-all ${!isGridView ? 'bg-white text-black' : 'text-zinc-500'}`}><List size={16}/></button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-8 pb-40">
+        <AnimatePresence mode="wait">
+          {searchQuery ? (
+            <motion.div key="search" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1">
+              {filteredData?.map(song => (
+                <SongRow key={song.id} song={song} onSelect={() => onSongSelect(song)} isPlaying={song.id === currentSongId} onAddNext={() => onAddNext(song)} onAddToQueue={() => onAddToQueue(song)} />
+              ))}
+            </motion.div>
+          ) : path.type === 'root' ? (
+            <motion.div key="artists" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+              {artists.map(artist => (
                 <div 
-                  className="aspect-square rounded-[2.5rem] overflow-hidden mb-5 relative shadow-[0_20px_40px_rgba(0,0,0,0.5)] border border-white/5 bg-zinc-900 cursor-pointer" 
-                  onClick={() => onSongSelect(song)}
+                  key={artist.name} 
+                  onClick={() => setPath({ type: 'artist', id: artist.name, label: artist.name })}
+                  className="group cursor-pointer space-y-3"
                 >
-                  <img src={song.coverUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt="" />
-                  <div className={`absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center ${currentSongId === song.id ? 'opacity-100' : ''}`}>
-                    <div className={`w-14 h-14 bg-white text-black rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all ${currentSongId === song.id ? 'bg-blue-600 text-white' : ''}`}>
-                      {currentSongId === song.id ? <Zap size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" className="ml-1" />}
+                  <div className="aspect-square rounded-[2.5rem] overflow-hidden relative shadow-xl bg-zinc-900 border border-white/5">
+                    <img src={artist.coverUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-60 group-hover:opacity-100" />
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Mic2 size={32} className="text-white" />
                     </div>
                   </div>
-                </div>
-                
-                <div className="px-2 space-y-1 text-center" dir="rtl">
-                  <h4 className={`font-bold text-sm truncate ${currentSongId === song.id ? 'text-blue-500' : 'text-white'}`}>{song.title}</h4>
-                  <p className="text-[10px] text-zinc-500 font-black uppercase tracking-wider truncate">{song.artist}</p>
-                </div>
-
-                <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                   <button onClick={() => setEditingSong(song)} className="p-3 bg-black/60 backdrop-blur-xl border border-white/10 text-white rounded-2xl hover:bg-blue-600 transition-all"><Edit3 size={14}/></button>
-                   <button onClick={() => onAddToQueue?.(song)} className="p-3 bg-black/60 backdrop-blur-xl border border-white/10 text-white rounded-2xl hover:bg-purple-600 transition-all"><PlusCircle size={14} /></button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-2 bg-white/[0.02] border border-white/5 rounded-[3rem] p-4">
-            {displayedSongs.map((song, idx) => (
-              <div 
-                key={song.id} 
-                className={`group flex items-center gap-6 px-6 py-4 rounded-3xl hover:bg-white/5 transition-all cursor-pointer ${currentSongId === song.id ? 'bg-blue-600/10 border border-blue-500/10' : 'border border-transparent'}`}
-                dir="rtl"
-              >
-                <div className="w-8 text-[10px] font-black text-zinc-700" onClick={() => onSongSelect(song)}>{idx + 1}</div>
-                <div className="flex-1 flex items-center gap-5 min-w-0" onClick={() => onSongSelect(song)}>
-                  <div className="relative w-12 h-12 shrink-0 rounded-2xl overflow-hidden shadow-lg border border-white/5">
-                     <img src={song.coverUrl} className="w-full h-full object-cover" alt="" />
-                     {currentSongId === song.id && <div className="absolute inset-0 bg-blue-600/40 flex items-center justify-center"><Zap size={16} fill="white" /></div>}
-                  </div>
-                  <div className="min-w-0 text-right">
-                    <h4 className={`font-bold text-base truncate ${currentSongId === song.id ? 'text-blue-400' : 'text-white'}`}>{song.title}</h4>
-                    <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest truncate">{song.artist}</p>
+                  <div className="text-center" dir="rtl">
+                    <h4 className="font-bold text-sm text-white truncate px-2">{artist.name}</h4>
+                    <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest">{artist.albums.length} آلبوم</p>
                   </div>
                 </div>
-                <div className="w-1/4 text-xs font-bold text-zinc-600 truncate hidden lg:block text-right">{song.album}</div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setEditingSong(song)} className="opacity-0 group-hover:opacity-100 p-3 text-zinc-500 hover:text-white transition-all"><Edit3 size={16}/></button>
-                  <button onClick={() => onAddToQueue?.(song)} className="opacity-0 group-hover:opacity-100 p-3 text-zinc-500 hover:text-blue-500 transition-all"><PlusCircle size={20} /></button>
-                  <div className="w-16 text-left text-xs font-mono text-zinc-600 px-4">
-                    {Math.floor(song.duration / 60)}:{(song.duration % 60).toString().padStart(2, '0')}
+              ))}
+            </motion.div>
+          ) : path.type === 'artist' ? (
+            <motion.div key="albums" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {currentArtist?.albums.map(album => (
+                <div 
+                  key={album.name}
+                  onClick={() => setPath({ type: 'album', id: album.name, label: album.name })}
+                  className="p-6 bg-white/[0.03] border border-white/5 rounded-[2.5rem] flex gap-6 hover:bg-white/5 transition-all cursor-pointer group"
+                  dir="rtl"
+                >
+                  <img src={album.coverUrl} className="w-24 h-24 rounded-2xl shadow-2xl object-cover" />
+                  <div className="flex flex-col justify-center min-w-0">
+                    <h4 className="text-lg font-black text-white truncate">{album.name}</h4>
+                    <p className="text-xs text-zinc-500 font-bold">{album.year}</p>
+                    <p className="text-[10px] text-blue-500 font-black uppercase mt-2">{album.songs.length} آهنگ</p>
                   </div>
+                  <ChevronRight size={18} className="mr-auto self-center text-zinc-700 group-hover:text-white transition-colors" />
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </motion.div>
+          ) : (
+            <motion.div key="tracks" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1">
+               <div className="flex items-center gap-6 p-6 mb-8 bg-blue-600/10 rounded-[2.5rem] border border-blue-500/10" dir="rtl">
+                 <img src={currentAlbum?.coverUrl} className="w-32 h-32 rounded-3xl shadow-2xl" />
+                 <div>
+                   <h3 className="text-3xl font-black text-white">{currentAlbum?.name}</h3>
+                   <p className="text-blue-400 font-bold">{currentAlbum?.artist}</p>
+                   <div className="flex items-center gap-4 mt-4">
+                     <button onClick={() => currentAlbum && onSongSelect(currentAlbum.songs[0])} className="px-6 py-2 bg-white text-black rounded-xl font-black text-xs flex items-center gap-2 hover:scale-105 transition-all">
+                       <Play size={14} fill="black"/> پخش آلبوم
+                     </button>
+                   </div>
+                 </div>
+               </div>
+               {currentAlbum?.songs.map(song => (
+                 <SongRow key={song.id} song={song} onSelect={() => onSongSelect(song)} isPlaying={song.id === currentSongId} onAddNext={() => onAddNext(song)} onAddToQueue={() => onAddToQueue(song)} />
+               ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <AnimatePresence>
-        {editingSong && (
-          <TagEditor 
-            song={editingSong} onClose={() => setEditingSong(null)} 
-            onSave={(updated) => { onUpdateSong(updated); setEditingSong(null); }} 
-          />
-        )}
+        {editingSong && <TagEditor song={editingSong} onClose={() => setEditingSong(null)} onSave={(u) => { onUpdateSong(u); setEditingSong(null); }} />}
       </AnimatePresence>
     </div>
   );
 };
+
+const SongRow = ({ song, onSelect, isPlaying, onAddNext, onAddToQueue }: { song: Song, onSelect: () => void, isPlaying: boolean, onAddNext: () => void, onAddToQueue: () => void }) => (
+  <div 
+    className={`group flex items-center gap-4 px-6 py-3 rounded-2xl transition-all cursor-pointer ${isPlaying ? 'bg-blue-600/10' : 'hover:bg-white/5'}`}
+    dir="rtl"
+    onClick={onSelect}
+  >
+    <div className="w-8 text-[10px] font-black text-zinc-700">{song.trackNumber || '•'}</div>
+    <div className="flex-1 min-w-0">
+      <h4 className={`font-bold text-sm truncate ${isPlaying ? 'text-blue-400' : 'text-white'}`}>{song.title}</h4>
+      <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest truncate">{song.artist}</p>
+    </div>
+    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      <button onClick={(e) => { e.stopPropagation(); onAddNext(); }} className="p-2 text-zinc-500 hover:text-white" title="پخش بعدی"><Zap size={14}/></button>
+      <button onClick={(e) => { e.stopPropagation(); onAddToQueue(); }} className="p-2 text-zinc-500 hover:text-white" title="افزودن به صف"><PlusCircle size={14}/></button>
+    </div>
+    <div className="w-12 text-left text-[10px] font-mono text-zinc-600">
+      {Math.floor(song.duration / 60)}:{(song.duration % 60).toString().padStart(2, '0')}
+    </div>
+  </div>
+);
 
 export default LibraryView;

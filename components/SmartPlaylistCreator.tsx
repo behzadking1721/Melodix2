@@ -45,11 +45,14 @@ const SmartPlaylistCreator: React.FC<SmartPlaylistCreatorProps> = ({ library, on
 
   const handleSave = () => {
     if (suggestedIds.length === 0 || !playlistName) return;
+    // Fix: Added missing dateCreated and lastModified properties to comply with Playlist interface
     const newPlaylist: Playlist = {
       id: Math.random().toString(36).substr(2, 9),
       name: playlistName,
       songIds: suggestedIds,
-      coverUrl: generatedCover || undefined
+      coverUrl: generatedCover || undefined,
+      dateCreated: Date.now(),
+      lastModified: Date.now()
     };
     onSave(newPlaylist);
   };

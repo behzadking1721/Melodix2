@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, ListMusic, Minimize2, Trash2, Shuffle, Download, Upload, CheckCircle2, AlertCircle, Settings, Clock, Zap } from 'lucide-react';
+import { Search, ListMusic, Minimize2, Settings, Zap } from 'lucide-react';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import Sidebar from './components/Sidebar';
 import Player from './components/Player';
@@ -13,10 +13,11 @@ import SettingsView from './components/SettingsView';
 import AboutView from './components/AboutView';
 import SmartPlaylistCreator from './components/SmartPlaylistCreator';
 import TitleBar from './components/TitleBar';
-import { Song, NavigationTab, EQSettings, Playlist, AppSettings } from './types';
+import { Song, NavigationTab, EQSettings, Playlist, AppSettings, QueueState } from './types';
 import { MOCK_SONGS } from './constants';
 import { fetchLyrics, suggestSongTags } from './services/geminiService';
 import { AudioEngine } from './services/audioEngine';
+import { queueManager } from './services/queueManager';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavigationTab>(NavigationTab.Home);
@@ -31,21 +32,12 @@ const App: React.FC = () => {
   const [playlists, setPlaylists] = useState<Playlist[]>(() => {
     const saved = localStorage.getItem('melodix-playlists-v5');
     return saved ? JSON.parse(saved) : [
-      { id: 'favs', name: 'My Favorites', songIds: songs.filter(s => s.isFavorite).map(s => s.id), isSystem: true }
+      { id: 'favs', name: 'My Favorites', songIds: songs.filter(s => s.isFavorite).map(s => s.id), isSystem: true, dateCreated: Date.now(), lastModified: Date.now() }
     ];
   });
 
-  const [recentSongs, setRecentSongs] = useState<Song[]>(() => {
-    const saved = localStorage.getItem('melodix-recent');
-    return saved ? JSON.parse(saved) : [];
-  });
-  
-  const [queue, setQueue] = useState<Song[]>(() => {
-    const saved = localStorage.getItem('melodix-queue-v3');
-    return saved ? JSON.parse(saved) : MOCK_SONGS;
-  });
-  const [queueIndex, setQueueIndex] = useState(0);
-  const currentSong = useMemo(() => queue[queueIndex] || null, [queue, queueIndex]);
+  const [queue, setQueue] = useState<QueueState>({ items: [], currentIndex: -1, shuffled: false, repeatMode: 'all' });
+  const currentSong = useMemo(() => queue.items[queue.currentIndex] || null, [queue]);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -54,7 +46,6 @@ const App: React.FC = () => {
   const [isEqOpen, setIsEqOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [snackbar, setSnackbar] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
   
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('melodix-settings-v10');
@@ -79,31 +70,28 @@ const App: React.FC = () => {
 
   const [lyricsCache, setLyricsCache] = useState<Record<string, string>>({});
   const [isLyricsLoading, setIsLyricsLoading] = useState(false);
-  
   const engine = useMemo(() => AudioEngine.getInstance(), []);
+
+  // Sync QueueManager with Local State
+  useEffect(() => {
+    const unsubscribe = queueManager.subscribe(setQueue);
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('melodix-library-v10', JSON.stringify(songs));
-    localStorage.setItem('melodix-recent', JSON.stringify(recentSongs));
-    localStorage.setItem('melodix-queue-v3', JSON.stringify(queue));
     localStorage.setItem('melodix-playlists-v5', JSON.stringify(playlists));
     localStorage.setItem('melodix-settings-v10', JSON.stringify(settings));
     document.documentElement.style.setProperty('--accent-color', settings.accentColor);
-    
     engine.setCrossfade(settings.crossfadeSec);
-  }, [songs, recentSongs, queue, settings, playlists]);
+  }, [songs, settings, playlists]);
 
   useEffect(() => {
     engine.setEQ(eqSettings);
   }, [eqSettings, engine]);
 
-  const showSnackbar = (msg: string, type: 'success' | 'error' = 'success') => {
-    setSnackbar({ msg, type });
-    setTimeout(() => setSnackbar(null), 3000);
-  };
-
-  const handleNext = () => setQueueIndex((prev) => (prev + 1) % queue.length);
-  const handlePrev = () => setQueueIndex((prev) => (prev - 1 + queue.length) % queue.length);
+  const handleNext = () => queueManager.next();
+  const handlePrev = () => queueManager.prev();
 
   const handleSyncMetadata = async (song: Song) => {
     if (song.isSynced) return;
@@ -114,26 +102,23 @@ const App: React.FC = () => {
       setLyricsCache(prev => ({ ...prev, [song.id]: lyrics }));
       handleUpdateSong({ ...song, ...suggestions, isSynced: true, hasLyrics: lyrics.length > 50 });
     } catch (e) {
-      showSnackbar("AI Synchronization failed", "error");
+      console.error("AI Synchronization failed", e);
     }
     setIsLyricsLoading(false);
   };
 
   const handleUpdateSong = (updatedSong: Song) => {
     setSongs(prev => prev.map(s => s.id === updatedSong.id ? updatedSong : s));
-    setQueue(prev => prev.map(s => s.id === updatedSong.id ? updatedSong : s));
   };
 
   const handleSongSelect = (song: Song) => {
-    const idx = queue.findIndex(s => s.id === song.id);
-    if (idx !== -1) {
-      setQueueIndex(idx);
+    const idxInQueue = queue.items.findIndex(s => s.id === song.id);
+    if (idxInQueue !== -1) {
+      queueManager.jumpTo(idxInQueue);
     } else {
-      setQueue([song, ...queue]);
-      setQueueIndex(0);
+      queueManager.setQueue([song, ...queue.items], 0);
     }
     setIsPlaying(true);
-    setIsSearchFocused(false);
   };
 
   const handlePlayPlaylist = (playlist: Playlist) => {
@@ -142,36 +127,25 @@ const App: React.FC = () => {
       .filter((s): s is Song => !!s);
     
     if (playlistSongs.length > 0) {
-      setQueue(playlistSongs);
-      setQueueIndex(0);
+      queueManager.setQueue(playlistSongs, 0);
       setIsPlaying(true);
     }
-  };
-
-  const handleCreatePlaylist = (newPlaylist: Playlist) => {
-    setPlaylists([...playlists, newPlaylist]);
-    setIsCreatorOpen(false);
-    showSnackbar(`Playlist "${newPlaylist.name}" created!`);
   };
 
   useEffect(() => {
     if (currentSong) {
       engine.play(currentSong, settings.crossfadeSec > 0);
-      setRecentSongs(prev => [currentSong, ...prev.filter(s => s.id !== currentSong.id)].slice(0, 20));
       handleSyncMetadata(currentSong);
     }
 
     const activeEl = engine.getActiveElement();
     const onTimeUpdate = () => setProgress(activeEl.currentTime);
     const onEnded = () => {
-      if (settings.gaplessPlayback) {
-        handleNext();
-      }
+      if (settings.gaplessPlayback) handleNext();
     };
 
     activeEl.addEventListener('timeupdate', onTimeUpdate);
     activeEl.addEventListener('ended', onEnded);
-    
     return () => {
       activeEl.removeEventListener('timeupdate', onTimeUpdate);
       activeEl.removeEventListener('ended', onEnded);
@@ -200,31 +174,6 @@ const App: React.FC = () => {
       )}
 
       <motion.main layout className={`flex-1 h-full relative overflow-hidden ${settings.miniMode ? 'pt-0' : 'pt-10'}`}>
-        {!settings.miniMode && (
-          <div className="fixed top-12 right-10 flex items-center gap-2 z-[300]">
-             <div className="relative group">
-               <input 
-                 type="text" value={searchQuery} 
-                 onChange={(e) => setSearchQuery(e.target.value)}
-                 onFocus={() => setIsSearchFocused(true)}
-                 onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-                 placeholder="Search Intelligence..." className="bg-black/40 border border-white/5 rounded-xl py-2 px-4 text-xs font-bold focus:w-80 transition-all w-48 backdrop-blur-3xl outline-none h-10 pr-10"
-               />
-               <Search size={14} className="absolute right-3 top-3 text-zinc-500 pointer-events-none group-focus-within:text-blue-500 transition-colors" />
-             </div>
-
-             <button 
-              onClick={() => setActiveTab(NavigationTab.Settings)} 
-              className={`p-3 rounded-xl border transition-all h-10 w-10 flex items-center justify-center backdrop-blur-3xl ${activeTab === NavigationTab.Settings ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' : 'bg-black/40 border-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}`}
-             >
-               <Settings size={16} />
-             </button>
-             <button onClick={() => setSettings({...settings, miniMode: true})} className="p-3 rounded-xl bg-black/40 border border-white/5 text-zinc-400 hover:text-white backdrop-blur-3xl hover:bg-white/10 transition-all h-10 w-10 flex items-center justify-center">
-               <Minimize2 size={16} />
-             </button>
-          </div>
-        )}
-
         {settings.miniMode ? (
           <MiniPlayer currentSong={currentSong} isPlaying={isPlaying} onTogglePlay={() => setIsPlaying(!isPlaying)} onNext={handleNext} onPrev={handlePrev} onRestore={() => setSettings({...settings, miniMode: false})} />
         ) : (
@@ -233,13 +182,22 @@ const App: React.FC = () => {
               <HomeView 
                 key="home" currentSong={currentSong} lyrics={currentSong ? lyricsCache[currentSong.id] : ''} 
                 isLoadingLyrics={isLyricsLoading} currentTime={progress} onSongSelect={handleSongSelect}
-                recentSongs={recentSongs} library={songs}
+                recentSongs={queue.items.slice(0, 10)} library={songs}
               />
             )}
-            {activeTab === NavigationTab.AllSongs && <LibraryView key="lib" songs={songs} onSongSelect={handleSongSelect} currentSongId={currentSong?.id} onUpdateSong={handleUpdateSong} onAddToQueue={(s) => setQueue([...queue, s])} />}
+            {activeTab === NavigationTab.AllSongs && (
+              <LibraryView 
+                key="lib" songs={songs} 
+                onSongSelect={handleSongSelect} 
+                onAddNext={(s) => queueManager.addNext(s)}
+                onAddToQueue={(s) => queueManager.addToEnd(s)}
+                currentSongId={currentSong?.id} 
+                onUpdateSong={handleUpdateSong} 
+              />
+            )}
             {activeTab === NavigationTab.Playlists && (
               <PlaylistView 
-                playlists={playlists} songs={songs} recentSongs={recentSongs}
+                playlists={playlists} songs={songs} recentSongs={queue.items.slice(0, 10)}
                 selectedPlaylistId={selectedPlaylistId} onSelectPlaylist={setSelectedPlaylistId}
                 onPlayPlaylist={handlePlayPlaylist} onDeletePlaylist={(id) => setPlaylists(p => p.filter(pl => pl.id !== id))}
                 onCreatePlaylist={() => setIsCreatorOpen(true)} onSongSelect={handleSongSelect} currentSongId={currentSong?.id}
@@ -251,20 +209,20 @@ const App: React.FC = () => {
                <div className="p-12 h-full overflow-y-auto custom-scrollbar">
                  <div className="flex justify-between items-center mb-10">
                    <div>
-                     <h2 className="text-5xl font-black tracking-tighter text-white">Smart Queue</h2>
-                     <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest mt-2">Active Asset Stream</p>
+                     <h2 className="text-5xl font-black tracking-tighter text-white">صف انتظار</h2>
+                     <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest mt-2">Active Playback Stream</p>
                    </div>
                  </div>
-                 <Reorder.Group axis="y" values={queue} onReorder={setQueue} className="space-y-2 pb-40">
-                    {queue.map((s, i) => (
+                 <Reorder.Group axis="y" values={queue.items} onReorder={(items) => queueManager.reorder(items)} className="space-y-2 pb-40">
+                    {queue.items.map((s, i) => (
                       <Reorder.Item 
                         key={s.id + i} value={s}
-                        className={`group flex items-center gap-4 p-4 rounded-3xl cursor-grab border transition-all ${i === queueIndex ? 'bg-blue-600/20 border-blue-500/20' : 'bg-white/[0.02] border-white/5 hover:bg-white/5'}`}
+                        className={`group flex items-center gap-4 p-4 rounded-3xl cursor-grab border transition-all ${i === queue.currentIndex ? 'bg-blue-600/20 border-blue-500/20' : 'bg-white/[0.02] border-white/5 hover:bg-white/5'}`}
                       >
                         <div className="w-10 text-[10px] font-black text-zinc-600">{i + 1}</div>
                         <img src={s.coverUrl} className="w-12 h-12 rounded-2xl object-cover" alt="" />
                         <div className="flex-1 min-w-0">
-                          <h4 className={`font-bold text-sm truncate ${i === queueIndex ? 'text-blue-400' : 'text-white'}`}>{s.title}</h4>
+                          <h4 className={`font-bold text-sm truncate ${i === queue.currentIndex ? 'text-blue-400' : 'text-white'}`}>{s.title}</h4>
                           <p className="text-[10px] text-zinc-500 font-black uppercase truncate">{s.artist}</p>
                         </div>
                       </Reorder.Item>
@@ -289,16 +247,7 @@ const App: React.FC = () => {
       )}
       
       <Equalizer settings={eqSettings} onChange={setEqSettings} isOpen={isEqOpen} onClose={() => setIsEqOpen(false)} />
-      {isCreatorOpen && <SmartPlaylistCreator library={songs} onClose={() => setIsCreatorOpen(false)} onSave={handleCreatePlaylist} />}
-      
-      <AnimatePresence>
-        {snackbar && (
-          <motion.div initial={{ opacity: 0, y: 50, x: '-50%' }} animate={{ opacity: 1, y: 0, x: '-50%' }} exit={{ opacity: 0, y: 50, x: '-50%' }} className={`fixed bottom-32 left-1/2 px-6 py-3 rounded-2xl font-bold shadow-2xl z-[1000] flex items-center gap-3 border ${snackbar.type === 'error' ? 'bg-red-600 border-red-500 text-white' : 'bg-blue-600 border-blue-500 text-white'}`}>
-            {snackbar.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
-            {snackbar.msg}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {isCreatorOpen && <SmartPlaylistCreator library={songs} onClose={() => setIsCreatorOpen(false)} onSave={(p) => { setPlaylists([...playlists, {...p, dateCreated: Date.now(), lastModified: Date.now()}]); setIsCreatorOpen(false); }} />}
     </div>
   );
 };

@@ -6,7 +6,7 @@ export interface Song {
   album: string;
   genre: string;
   year: number;
-  trackNumber?: number; // Stage 2
+  trackNumber?: number;
   duration: number; 
   coverUrl: string;
   url: string;
@@ -15,15 +15,25 @@ export interface Song {
   playCount: number;
   isSynced?: boolean;
   hasLyrics?: boolean;
-  lrcContent?: string; // Stage 3: Sync Lyrics
-  replayGain?: number; // Stage 1: Auto Volume Leveling (dB)
+  lrcContent?: string;
+  replayGain?: number;
   bpm?: number;
 }
 
-export enum PlaylistViewMode {
-  Detailed = 'detailed',
-  Compact = 'compact',
-  Grid = 'grid'
+export interface AlbumViewModel {
+  name: string;
+  artist: string;
+  year: number;
+  coverUrl: string;
+  songs: Song[];
+  totalDuration: number;
+}
+
+export interface ArtistViewModel {
+  name: string;
+  albums: AlbumViewModel[];
+  songCount: number;
+  coverUrl: string;
 }
 
 export interface Playlist {
@@ -31,7 +41,16 @@ export interface Playlist {
   name: string;
   songIds: string[];
   coverUrl?: string;
+  dateCreated: number;
+  lastModified: number;
   isSystem?: boolean;
+}
+
+export interface QueueState {
+  items: Song[];
+  currentIndex: number;
+  shuffled: boolean;
+  repeatMode: 'none' | 'one' | 'all';
 }
 
 export interface EQSettings {
@@ -52,7 +71,7 @@ export interface AppSettings {
   crossfadeSec: number;
   autoNormalize: boolean;
   visualizationEnabled: boolean;
-  waveformEnabled: boolean; // New in Stage 4
+  waveformEnabled: boolean;
   miniMode: boolean;
   gaplessPlayback: boolean;
   audioDevice: string;
@@ -65,4 +84,13 @@ export enum NavigationTab {
   Queue = 'queue',
   Settings = 'settings',
   About = 'about'
+}
+
+/**
+ * Defines available viewing modes for the playlist section.
+ */
+export enum PlaylistViewMode {
+  Grid = 'grid',
+  List = 'list',
+  Detailed = 'detailed'
 }
