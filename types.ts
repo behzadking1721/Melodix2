@@ -41,10 +41,9 @@ export interface AppSettings {
 }
 
 export enum NavigationTab {
-  Home = 'home',
-  Library = 'library',
-  AllSongs = 'allsongs',
-  Playlists = 'playlists',
+  Home = 'main',
+  Playlists = 'playlist',
+  AllSongs = 'musics',
   Settings = 'settings',
   About = 'about'
 }

@@ -26,8 +26,9 @@ const App: React.FC = () => {
   // Search States
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchHistory, setSearchHistory] = useState<string[]>(['Lofi beats', 'Jazz 2024', 'Acoustic guitar']);
-  
+  const [searchHistory, setSearchHistory] = useState<string[]>(['Chill Vibes', 'Lofi 2024', 'Jazz Night']);
+  const searchRef = useRef<HTMLDivElement>(null);
+
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('melodix-settings');
     return saved ? JSON.parse(saved) : {
@@ -45,6 +46,17 @@ const App: React.FC = () => {
   const [isLyricsLoading, setIsLyricsLoading] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Close search on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+    if (isSearchOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isSearchOpen]);
 
   useEffect(() => {
     localStorage.setItem('melodix-settings', JSON.stringify(settings));
@@ -74,16 +86,9 @@ const App: React.FC = () => {
     const genres = Array.from(new Set(filteredSongs.map(s => s.genre)));
     
     return [
-      { id: 'recent', name: 'New Discovery', isSystem: true, songIds: [...filteredSongs].sort((a,b) => b.dateAdded - a.dateAdded).slice(0, 5).map(s => s.id), coverUrl: 'https://picsum.photos/seed/melodix-new/600/600' },
-      { id: 'most-played', name: 'Heavy Rotation', isSystem: true, songIds: [...filteredSongs].sort((a,b) => b.playCount - a.playCount).slice(0, 8).map(s => s.id), coverUrl: 'https://picsum.photos/seed/melodix-hot/600/600' },
-      ...genres.slice(0, 2).map(g => ({
-        id: `ai-genre-${g}`,
-        name: `${g} Pulse`,
-        isSystem: true,
-        songIds: filteredSongs.filter(s => s.genre === g).map(s => s.id),
-        coverUrl: `https://picsum.photos/seed/${g}/600/600`
-      })),
-      { id: 'favorites', name: 'Collection Alpha', isSystem: true, songIds: filteredSongs.filter(s => s.isFavorite).map(s => s.id), coverUrl: 'https://picsum.photos/seed/melodix-love/600/600' }
+      { id: 'recent', name: 'New Assets', isSystem: true, songIds: [...filteredSongs].sort((a,b) => b.dateAdded - a.dateAdded).slice(0, 5).map(s => s.id), coverUrl: 'https://picsum.photos/seed/melodix-new/600/600' },
+      { id: 'most-played', name: 'Hot Rotation', isSystem: true, songIds: [...filteredSongs].sort((a,b) => b.playCount - a.playCount).slice(0, 8).map(s => s.id), coverUrl: 'https://picsum.photos/seed/melodix-hot/600/600' },
+      { id: 'favorites', name: 'Core Alpha', isSystem: true, songIds: filteredSongs.filter(s => s.isFavorite).map(s => s.id), coverUrl: 'https://picsum.photos/seed/melodix-love/600/600' }
     ];
   }, [songs, settings.minDurationSec]);
 
@@ -109,10 +114,6 @@ const App: React.FC = () => {
     audioRef.current.volume = volume;
     const updateProgress = () => { if (audioRef.current) setProgress(audioRef.current.currentTime); };
     audioRef.current.addEventListener('timeupdate', updateProgress);
-    audioRef.current.addEventListener('ended', () => {
-      setIsPlaying(false);
-      if (currentSong) handleUpdateSong({ ...currentSong, playCount: currentSong.playCount + 1 });
-    });
     return () => audioRef.current?.pause();
   }, [currentSong?.id]);
 
@@ -145,7 +146,6 @@ const App: React.FC = () => {
     if (searchQuery.trim()) {
       setSearchHistory(prev => [searchQuery, ...prev.filter(h => h !== searchQuery)].slice(0, 5));
       setIsSearchOpen(false);
-      // Actual search logic would navigate or filter
       setActiveTab(NavigationTab.AllSongs);
     }
   };
@@ -170,7 +170,7 @@ const App: React.FC = () => {
                     <span>{playlist?.songIds.length} ASSETS</span>
                     <span>OFFLINE CACHED</span>
                   </div>
-                  <button onClick={() => setSelectedPlaylistId(null)} className="mt-4 px-8 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">← Hub</button>
+                  <button onClick={() => setSelectedPlaylistId(null)} className="mt-4 px-8 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">← Back</button>
                 </div>
               </div>
               <LibraryView songs={playlistSongs} onSongSelect={setCurrentSong} currentSongId={currentSong?.id} onUpdateSong={handleUpdateSong} />
@@ -182,13 +182,13 @@ const App: React.FC = () => {
         return <SettingsView settings={settings} onUpdate={setSettings} />;
       case NavigationTab.About:
         return (
-          <div className="p-24 max-w-5xl space-y-12 animate-in fade-in duration-1000">
-             <div className="flex items-center gap-8">
-              <div className="w-32 h-32 rounded-[3rem] bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center font-black text-6xl text-white shadow-2xl">M</div>
-              <h2 className="text-7xl font-black tracking-tighter text-white">Melodix v5.2</h2>
+          <div className="p-20 max-w-4xl space-y-10 animate-in fade-in duration-700">
+             <div className="flex items-center gap-6">
+              <div className="w-24 h-24 rounded-[2rem] bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center font-black text-4xl text-white shadow-2xl">M</div>
+              <h2 className="text-6xl font-black tracking-tighter text-white">Melodix v5.5</h2>
             </div>
-            <p className="text-zinc-400 text-2xl leading-relaxed font-semibold max-w-2xl">
-              Professional neural audio interface using IndexedDB and Gemini 3 Pro reasoning.
+            <p className="text-zinc-400 text-xl leading-relaxed font-semibold max-w-xl">
+              Next-generation local audio environment with Neural LRC sync and Musixmatch-grade precision.
             </p>
           </div>
         );
@@ -203,62 +203,53 @@ const App: React.FC = () => {
       
       <main className="flex-1 h-full overflow-y-auto bg-transparent pt-10 relative custom-scrollbar">
         
-        {/* Sleek Floating Global Actions */}
-        <div className="fixed top-12 right-12 flex items-center gap-3 z-[200]">
+        {/* Floating Controls Overlay */}
+        <div className="fixed top-12 right-10 flex items-center gap-2 z-[300]">
            <button 
              onClick={() => setIsSearchOpen(!isSearchOpen)}
-             className={`p-3.5 rounded-2xl transition-all duration-300 border ${isSearchOpen ? 'bg-white text-black border-white' : 'bg-black/20 backdrop-blur-3xl text-zinc-400 border-white/5 hover:text-white'}`}
+             className={`p-3 rounded-2xl transition-all border ${isSearchOpen ? 'bg-white text-black border-white' : 'bg-black/40 backdrop-blur-3xl text-zinc-400 border-white/5 hover:text-white hover:bg-white/5'}`}
            >
-             <Search size={18} />
+             <Search size={16} />
            </button>
            <button 
               onClick={() => setSettings({...settings, floatingLyrics: !settings.floatingLyrics})}
-              className={`p-3.5 rounded-2xl transition-all duration-300 border ${settings.floatingLyrics ? 'bg-blue-600 text-white border-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.4)]' : 'bg-black/20 backdrop-blur-3xl text-zinc-400 border-white/5 hover:text-white'}`}
+              className={`p-3 rounded-2xl transition-all border ${settings.floatingLyrics ? 'bg-blue-600 text-white border-blue-400' : 'bg-black/40 backdrop-blur-3xl text-zinc-400 border-white/5 hover:text-white hover:bg-white/5'}`}
             >
-              <Layers size={18} />
+              <Layers size={16} />
             </button>
         </div>
 
-        {/* Floating Search Panel */}
+        {/* Neural Floating Search Panel */}
         {isSearchOpen && (
-          <div className="fixed top-28 right-12 w-96 bg-zinc-900/90 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] shadow-2xl z-[250] animate-in slide-in-from-top-4 duration-300 overflow-hidden">
-            <form onSubmit={handleSearchSubmit} className="p-6 border-b border-white/5">
-              <div className="relative">
-                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
-                <input 
-                  autoFocus
-                  type="text" 
-                  placeholder="Ask or find anything..." 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-black/40 border border-white/5 rounded-2xl py-3 pl-12 pr-4 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500/50"
-                />
-              </div>
+          <div ref={searchRef} className="fixed top-24 right-10 w-80 bg-zinc-900/90 backdrop-blur-[60px] border border-white/10 rounded-[2rem] shadow-[0_30px_100px_rgba(0,0,0,0.8)] z-[400] animate-in slide-in-from-top-2 duration-300 overflow-hidden">
+            <form onSubmit={handleSearchSubmit} className="p-5 border-b border-white/5">
+              <input 
+                autoFocus
+                type="text" 
+                placeholder="Ask Melodix..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-black/40 border border-white/5 rounded-xl py-2.5 px-4 text-[11px] font-bold focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all"
+              />
             </form>
-            <div className="p-6 space-y-6">
-               <div className="space-y-3">
-                  <h4 className="text-[10px] font-black text-zinc-600 uppercase tracking-widest flex items-center gap-2">
-                    <History size={12} /> Recent Searches
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
+            <div className="p-5 space-y-5">
+               <div className="space-y-2">
+                  <h4 className="text-[9px] font-black text-zinc-600 uppercase tracking-widest flex items-center gap-2"><History size={10}/> History</h4>
+                  <div className="flex flex-wrap gap-1.5">
                     {searchHistory.map((h, i) => (
-                      <button key={i} onClick={() => { setSearchQuery(h); handleSearchSubmit(); }} className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-[10px] font-bold text-zinc-400 hover:text-white transition-all">
+                      <button key={i} onClick={() => { setSearchQuery(h); handleSearchSubmit(); }} className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[9px] font-bold text-zinc-400 hover:text-white transition-all">
                         {h}
                       </button>
                     ))}
                   </div>
                </div>
-               <div className="space-y-3">
-                  <h4 className="text-[10px] font-black text-zinc-600 uppercase tracking-widest flex items-center gap-2">
-                    <Sparkles size={12} className="text-blue-500" /> Neural Suggestions
-                  </h4>
-                  <div className="space-y-1">
-                    {['Top Jazz from Collection', 'Similar to ' + (currentSong?.artist || 'Library')].map((s, i) => (
-                      <button key={i} className="w-full text-left px-4 py-2 rounded-xl hover:bg-white/5 text-[11px] font-medium text-zinc-500 hover:text-blue-400 transition-all">
-                        {s}
-                      </button>
-                    ))}
-                  </div>
+               <div className="space-y-1.5">
+                  <h4 className="text-[9px] font-black text-zinc-600 uppercase tracking-widest flex items-center gap-2"><Sparkles size={10} className="text-blue-500"/> AI Suggestions</h4>
+                  {['Similar to ' + (currentSong?.artist || 'Jazz'), 'High-Fidelity Tracks'].map((s, i) => (
+                    <button key={i} className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-white/5 text-[10px] font-medium text-zinc-500 hover:text-blue-400 transition-all">
+                      {s}
+                    </button>
+                  ))}
                </div>
             </div>
           </div>
@@ -275,14 +266,14 @@ const App: React.FC = () => {
         volume={volume} onVolumeChange={setVolume} onToggleEq={() => setIsEqOpen(!isEqOpen)} isEqOpen={isEqOpen}
       />
 
-      {/* Persistent Lyric Layer */}
+      {/* Transparent Floating Lyric Overlay */}
       {settings.floatingLyrics && currentSong && currentLyricLine && !isSearchOpen && (
-        <div className="fixed bottom-36 left-1/2 -translate-x-1/2 w-full max-w-4xl px-8 z-[180] pointer-events-none animate-in fade-in slide-in-from-bottom-8 duration-700">
-          <div className="bg-black/20 backdrop-blur-[60px] border border-white/5 rounded-[2.5rem] p-10 text-center shadow-2xl">
-            <p className="text-white font-black tracking-tighter leading-tight" style={{ fontSize: 'clamp(1.5rem, 4vw, 3rem)' }}>
-              {currentLyricLine}
-            </p>
-          </div>
+        <div className="fixed inset-0 flex items-center justify-center z-[250] pointer-events-none px-12 text-center animate-in fade-in duration-1000">
+           <div className="max-w-5xl">
+              <p className="text-white font-black tracking-tighter leading-none drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)]" style={{ fontSize: 'clamp(2rem, 6vw, 5rem)' }}>
+                {currentLyricLine}
+              </p>
+           </div>
         </div>
       )}
     </div>
