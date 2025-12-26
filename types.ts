@@ -6,6 +6,7 @@ export interface Song {
   album: string;
   genre: string;
   year: number;
+  trackNumber?: number; // Stage 2
   duration: number; 
   coverUrl: string;
   url: string;
