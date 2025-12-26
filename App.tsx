@@ -1,10 +1,9 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, ListMusic, Minimize2, Settings, Zap } from 'lucide-react';
-import { motion, AnimatePresence, Reorder } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Zap, AlertCircle, X } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Player from './components/Player';
-import MiniPlayer from './components/MiniPlayer';
 import LibraryView from './components/LibraryView';
 import HomeView from './components/HomeView';
 import PlaylistView from './components/PlaylistView';
@@ -13,11 +12,14 @@ import SettingsView from './components/SettingsView';
 import AboutView from './components/AboutView';
 import SmartPlaylistCreator from './components/SmartPlaylistCreator';
 import TitleBar from './components/TitleBar';
-import { Song, NavigationTab, EQSettings, Playlist, AppSettings, QueueState } from './types';
+import CrashView from './components/CrashView';
+import { Song, NavigationTab, EQSettings, Playlist, AppSettings, QueueState, AudioOutputMode } from './types';
 import { MOCK_SONGS } from './constants';
-import { fetchLyrics, suggestSongTags } from './services/geminiService';
 import { AudioEngine } from './services/audioEngine';
 import { queueManager } from './services/queueManager';
+import { initDB } from './services/dbService';
+import { logger, LogLevel, LogCategory } from './services/logger';
+import { errorService, MelodixError, ErrorSeverity } from './services/errorService';
 
 const MotionMain = motion.main as any;
 const MotionDiv = motion.div as any;
@@ -26,169 +28,185 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavigationTab>(NavigationTab.Home);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
   const [isCreatorOpen, setIsCreatorOpen] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const [fatalError, setFatalError] = useState<Error | null>(null);
+  const [notifications, setNotifications] = useState<MelodixError[]>([]);
   
-  const [songs, setSongs] = useState<Song[]>(() => {
-    const saved = localStorage.getItem('melodix-library-v10');
-    return saved ? JSON.parse(saved) : MOCK_SONGS;
-  });
-  
-  const [playlists, setPlaylists] = useState<Playlist[]>(() => {
-    const saved = localStorage.getItem('melodix-playlists-v5');
-    return saved ? JSON.parse(saved) : [
-      { id: 'favs', name: 'موسیقی‌های مورد علاقه', songIds: songs.filter(s => s.isFavorite).map(s => s.id), isSystem: true, dateCreated: Date.now(), lastModified: Date.now() }
-    ];
-  });
-
+  const [songs, setSongs] = useState<Song[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [queue, setQueue] = useState<QueueState>({ items: [], currentIndex: -1, shuffled: false, repeatMode: 'all' });
-  const currentSong = useMemo(() => queue.items[queue.currentIndex] || null, [queue]);
-
+  
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [eqSettings, setEqSettings] = useState<EQSettings>({ bass: 0, mid: 0, treble: 0 });
   const [isEqOpen, setIsEqOpen] = useState(false);
   
-  const [settings, setSettings] = useState<AppSettings>(() => {
-    const saved = localStorage.getItem('melodix-settings-v10');
-    return saved ? JSON.parse(saved) : {
-      minFileSizeMB: 2,
-      minDurationSec: 30,
-      launchOnBoot: false,
-      isDefaultPlayer: true,
-      alwaysOnTop: false,
-      themeMode: 'dark',
-      floatingLyrics: false,
-      accentColor: '#3b82f6',
-      crossfadeSec: 5,
-      autoNormalize: true,
-      visualizationEnabled: true,
-      waveformEnabled: true,
-      miniMode: false,
-      gaplessPlayback: true,
-      audioDevice: 'default'
-    };
-  });
-
-  const [lyricsCache, setLyricsCache] = useState<Record<string, string>>({});
-  const [isLyricsLoading, setIsLyricsLoading] = useState(false);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const engine = useMemo(() => AudioEngine.getInstance(), []);
 
-  // Theme Sync Logic (Stage 6)
+  // Global Crash Handler
   useEffect(() => {
+    const handleError = (e: ErrorEvent) => {
+      logger.log(LogLevel.FATAL, LogCategory.SYSTEM, 'Unhandled Exception detected', e.error);
+      setFatalError(e.error || new Error(e.message));
+    };
+    const handleRejection = (e: PromiseRejectionEvent) => {
+      logger.log(LogLevel.FATAL, LogCategory.SYSTEM, 'Unhandled Promise Rejection', e.reason);
+      setFatalError(new Error(String(e.reason)));
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleRejection);
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleRejection);
+    };
+  }, []);
+
+  // Error Service Subscriber
+  useEffect(() => {
+    return errorService.subscribe((err) => {
+      setNotifications(prev => [...prev, err]);
+      setTimeout(() => {
+        setNotifications(prev => prev.filter(n => n !== err));
+      }, 5000);
+    });
+  }, []);
+
+  useEffect(() => {
+    const startup = async () => {
+      logger.startTimer('startup');
+      try {
+        await initDB();
+        const savedSongs = localStorage.getItem('melodix-library-v10');
+        const savedPlaylists = localStorage.getItem('melodix-playlists-v5');
+        const savedSettings = localStorage.getItem('melodix-settings-v10');
+
+        setSongs(savedSongs ? JSON.parse(savedSongs) : MOCK_SONGS);
+        setPlaylists(savedPlaylists ? JSON.parse(savedPlaylists) : []);
+        
+        const defaultSettings: AppSettings = {
+          minFileSizeMB: 2, minDurationSec: 30, launchOnBoot: false, isDefaultPlayer: true,
+          alwaysOnTop: false, themeMode: 'dark', floatingLyrics: false, accentColor: '#3b82f6',
+          crossfadeSec: 5, autoNormalize: true, visualizationEnabled: true, waveformEnabled: true,
+          miniMode: false, gaplessPlayback: true, audioDevice: 'default',
+          audioOutputMode: AudioOutputMode.Shared, targetSampleRate: 44100
+        };
+
+        const currentSettings = savedSettings ? JSON.parse(savedSettings) : defaultSettings;
+        setSettings(currentSettings);
+        
+        // Sync AudioEngine with Saved Hardware Settings
+        await engine.setOutputDevice(currentSettings.audioDevice, currentSettings.audioOutputMode);
+        
+        setIsReady(true);
+        logger.endTimer('startup', LogCategory.SYSTEM, 'System successfully hydrated');
+      } catch (e) {
+        errorService.handleError(e, 'App Initialization', LogCategory.SYSTEM, ErrorSeverity.HIGH);
+      }
+    };
+    startup();
+  }, []);
+
+  useEffect(() => {
+    if (!settings) return;
     const root = document.documentElement;
     root.style.setProperty('--accent-color', settings.accentColor);
-    root.style.setProperty('--accent-glow', `${settings.accentColor}33`); // 20% Alpha
-    
-    if (settings.themeMode === 'light') {
-      root.classList.add('theme-light');
-    } else if (settings.themeMode === 'dark') {
-      root.classList.remove('theme-light');
-    } else {
-      const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      isSystemDark ? root.classList.remove('theme-light') : root.classList.add('theme-light');
-    }
-    
+    root.style.setProperty('--accent-glow', `${settings.accentColor}33`);
+    if (settings.themeMode === 'light') root.classList.add('theme-light');
+    else root.classList.remove('theme-light');
     localStorage.setItem('melodix-settings-v10', JSON.stringify(settings));
   }, [settings]);
 
   useEffect(() => {
     const unsubscribe = queueManager.subscribe(setQueue);
-    return unsubscribe;
+    return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('melodix-library-v10', JSON.stringify(songs));
-    localStorage.setItem('melodix-playlists-v5', JSON.stringify(playlists));
-    engine.setCrossfade(settings.crossfadeSec);
-  }, [songs, playlists]);
-
-  useEffect(() => {
-    engine.setEQ(eqSettings);
-  }, [eqSettings, engine]);
-
-  const handleNext = () => queueManager.next();
-  const handlePrev = () => queueManager.prev();
-
-  const handleSyncMetadata = async (song: Song) => {
-    if (song.isSynced) return;
-    setIsLyricsLoading(true);
-    try {
-      const suggestions = await suggestSongTags(song);
-      const lyrics = await fetchLyrics(suggestions.title || song.title, suggestions.artist || song.artist, song.id);
-      setLyricsCache(prev => ({ ...prev, [song.id]: lyrics }));
-      setSongs(prev => prev.map(s => s.id === song.id ? { ...s, ...suggestions, isSynced: true, hasLyrics: lyrics.length > 50 } : s));
-    } catch (e) {
-      console.error("AI Synchronization failed", e);
-    }
-    setIsLyricsLoading(false);
-  };
-
-  const handleSongSelect = (song: Song) => {
-    const idxInQueue = queue.items.findIndex(s => s.id === song.id);
-    if (idxInQueue !== -1) {
-      queueManager.jumpTo(idxInQueue);
-    } else {
-      queueManager.setQueue([song, ...queue.items], 0);
-    }
-    setIsPlaying(true);
-  };
+  const currentSong = useMemo(() => queue.items[queue.currentIndex] || null, [queue]);
 
   useEffect(() => {
     if (currentSong) {
-      engine.play(currentSong, settings.crossfadeSec > 0);
-      handleSyncMetadata(currentSong);
+      engine.play(currentSong, (settings?.crossfadeSec ?? 0) > 0);
     }
-    const activeEl = engine.getActiveElement();
-    const onTimeUpdate = () => setProgress(activeEl.currentTime);
-    const onEnded = () => settings.gaplessPlayback && handleNext();
-    activeEl.addEventListener('timeupdate', onTimeUpdate);
-    activeEl.addEventListener('ended', onEnded);
-    return () => {
-      activeEl.removeEventListener('timeupdate', onTimeUpdate);
-      activeEl.removeEventListener('ended', onEnded);
-    };
   }, [currentSong?.id]);
 
-  useEffect(() => { isPlaying ? engine.resume() : engine.pause(); }, [isPlaying]);
-  useEffect(() => { engine.setVolume(volume); }, [volume]);
+  if (fatalError) return <CrashView error={fatalError} onRestart={() => window.location.reload()} />;
+
+  if (!isReady || !settings) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#0a0a0a] gap-6">
+        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }}>
+           <Zap className="text-[var(--accent-color)]" size={48} fill="currentColor" />
+        </motion.div>
+        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700 animate-pulse">Initializing Neural Core...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
       <TitleBar />
-      {!settings.miniMode && (
-        <Sidebar 
-          activeTab={activeTab} 
-          onTabChange={(tab) => { setActiveTab(tab); setSelectedPlaylistId(null); }} 
-          playlists={playlists}
-          activePlaylistId={selectedPlaylistId}
-          onSelectPlaylist={(id) => { setActiveTab(NavigationTab.Playlists); setSelectedPlaylistId(id); }}
-        />
-      )}
+      <Sidebar 
+        activeTab={activeTab} 
+        onTabChange={setActiveTab} 
+        playlists={playlists}
+        activePlaylistId={selectedPlaylistId}
+        onSelectPlaylist={(id) => { setActiveTab(NavigationTab.Playlists); setSelectedPlaylistId(id); }}
+      />
 
       <MotionMain layout className="flex-1 h-full relative overflow-hidden pt-10">
         <AnimatePresence mode="wait">
           <MotionDiv
             key={activeTab + (selectedPlaylistId || '')}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.3, ease: "circOut" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             className="h-full"
           >
-            {activeTab === NavigationTab.Home && <HomeView currentSong={currentSong} lyrics={currentSong ? lyricsCache[currentSong.id] : ''} isLoadingLyrics={isLyricsLoading} currentTime={progress} onSongSelect={handleSongSelect} recentSongs={queue.items.slice(0, 10)} library={songs} />}
-            {activeTab === NavigationTab.AllSongs && <LibraryView songs={songs} onSongSelect={handleSongSelect} onAddNext={(s) => queueManager.addNext(s)} onAddToQueue={(s) => queueManager.addToEnd(s)} currentSongId={currentSong?.id} onUpdateSong={(s) => setSongs(prev => prev.map(old => old.id === s.id ? s : old))} />}
-            {activeTab === NavigationTab.Playlists && <PlaylistView playlists={playlists} songs={songs} recentSongs={queue.items.slice(0, 10)} selectedPlaylistId={selectedPlaylistId} onSelectPlaylist={setSelectedPlaylistId} onPlayPlaylist={(p) => queueManager.setQueue(p.songIds.map(id => songs.find(s => s.id === id)!), 0)} onDeletePlaylist={(id) => setPlaylists(p => p.filter(pl => pl.id !== id))} onCreatePlaylist={() => setIsCreatorOpen(true)} onSongSelect={handleSongSelect} currentSongId={currentSong?.id} />}
+            {activeTab === NavigationTab.Home && <HomeView currentSong={currentSong} lyrics="" isLoadingLyrics={false} currentTime={progress} onSongSelect={(s) => queueManager.setQueue([s], 0)} recentSongs={queue.items.slice(0, 10)} library={songs} />}
+            {activeTab === NavigationTab.AllSongs && <LibraryView songs={songs} onSongSelect={(s) => queueManager.setQueue([s], 0)} onAddNext={(s) => queueManager.addNext(s)} onAddToQueue={(s) => queueManager.addToEnd(s)} currentSongId={currentSong?.id} onUpdateSong={(s) => setSongs(prev => prev.map(o => o.id === s.id ? s : o))} />}
+            {activeTab === NavigationTab.Playlists && <PlaylistView playlists={playlists} songs={songs} recentSongs={queue.items.slice(0, 10)} selectedPlaylistId={selectedPlaylistId} onSelectPlaylist={setSelectedPlaylistId} onPlayPlaylist={(p) => queueManager.setQueue(p.songIds.map(id => songs.find(s => s.id === id)!), 0)} onDeletePlaylist={(id) => setPlaylists(p => p.filter(pl => pl.id !== id))} onCreatePlaylist={() => setIsCreatorOpen(true)} onSongSelect={(s) => queueManager.setQueue([s], 0)} currentSongId={currentSong?.id} />}
             {activeTab === NavigationTab.Settings && <SettingsView settings={settings} onUpdate={setSettings} />}
             {activeTab === NavigationTab.About && <AboutView />}
           </MotionDiv>
         </AnimatePresence>
+
+        <div className="fixed bottom-28 right-10 z-[500] space-y-3 pointer-events-none">
+          <AnimatePresence>
+            {notifications.map((n, i) => (
+              <MotionDiv
+                key={i}
+                initial={{ opacity: 0, x: 50, scale: 0.9 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className={`p-5 rounded-2xl flex items-center gap-4 border shadow-2xl pointer-events-auto mica ${n.severity === ErrorSeverity.LOW ? 'border-zinc-800' : 'border-red-600/20 bg-red-600/5'}`}
+                dir="rtl"
+              >
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${n.severity === ErrorSeverity.LOW ? 'bg-zinc-800 text-zinc-400' : 'bg-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.3)]'}`}>
+                  <AlertCircle size={20} />
+                </div>
+                <div className="flex-1 min-w-[200px]">
+                  <p className="text-xs font-bold text-white">{n.message}</p>
+                  <p className="text-[10px] text-zinc-500 font-black uppercase mt-1 tracking-widest">{n.code}</p>
+                </div>
+              </MotionDiv>
+            ))}
+          </AnimatePresence>
+        </div>
       </MotionMain>
 
-      {!settings.miniMode && <Player currentSong={currentSong} isPlaying={isPlaying} onTogglePlay={() => setIsPlaying(!isPlaying)} progress={progress} duration={currentSong?.duration || 0} onSeek={val => engine.seek(val)} volume={volume} onVolumeChange={setVolume} onToggleEq={() => setIsEqOpen(!isEqOpen)} isEqOpen={isEqOpen} onNext={handleNext} onPrev={handlePrev} onToggleQueue={() => setActiveTab(NavigationTab.Queue)} visualizationEnabled={settings.visualizationEnabled} waveformEnabled={settings.waveformEnabled} />}
+      <Player 
+        currentSong={currentSong} isPlaying={isPlaying} onTogglePlay={() => setIsPlaying(!isPlaying)} 
+        progress={progress} duration={currentSong?.duration || 0} onSeek={val => engine.seek(val)} 
+        volume={volume} onVolumeChange={setVolume} onToggleEq={() => setIsEqOpen(!isEqOpen)} isEqOpen={isEqOpen} 
+        onNext={() => queueManager.next()} onPrev={() => queueManager.prev()} onToggleQueue={() => setActiveTab(NavigationTab.Queue)} 
+        visualizationEnabled={settings.visualizationEnabled} waveformEnabled={settings.waveformEnabled} 
+      />
       
       <Equalizer settings={eqSettings} onChange={setEqSettings} isOpen={isEqOpen} onClose={() => setIsEqOpen(false)} />
       {isCreatorOpen && <SmartPlaylistCreator library={songs} onClose={() => setIsCreatorOpen(false)} onSave={(p) => setPlaylists([...playlists, p])} />}
-      {settings.miniMode && <MiniPlayer currentSong={currentSong} isPlaying={isPlaying} onTogglePlay={() => setIsPlaying(!isPlaying)} onNext={handleNext} onPrev={handlePrev} onRestore={() => setSettings({...settings, miniMode: false})} />}
     </div>
   );
 };

@@ -1,13 +1,16 @@
 
-import React, { useState } from 'react';
-import { AppSettings } from '../types';
+import React, { useState, useEffect } from 'react';
+import { AppSettings, AudioOutputMode } from '../types';
 import { 
   Monitor, HardDrive, Palette, Zap, 
   Cpu, Trash2, Database, ShieldCheck, Filter, 
   VolumeX, Download, RefreshCcw, Activity, Speaker,
-  Sun, Moon, Laptop
+  Sun, Moon, Laptop, Headphones, Settings2, Info
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { audioDeviceService, AudioDevice } from '../services/audioDeviceService';
+import { AudioEngine } from '../services/audioEngine';
+import { logger, LogCategory, LogLevel } from '../services/logger';
 
 const MotionDiv = motion.div as any;
 
@@ -28,6 +31,29 @@ const ACCENT_COLORS = [
 
 const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }) => {
   const [isScanning, setIsScanning] = useState(false);
+  const [devices, setDevices] = useState<AudioDevice[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    refreshDevices();
+  }, []);
+
+  const refreshDevices = async () => {
+    setIsRefreshing(true);
+    const list = await audioDeviceService.enumerateDevices();
+    setDevices(list);
+    setIsRefreshing(false);
+  };
+
+  const handleDeviceChange = async (deviceId: string) => {
+    onUpdate({ ...settings, audioDevice: deviceId });
+    await AudioEngine.getInstance().setOutputDevice(deviceId, settings.audioOutputMode);
+  };
+
+  const handleModeChange = async (mode: AudioOutputMode) => {
+    onUpdate({ ...settings, audioOutputMode: mode });
+    await AudioEngine.getInstance().setOutputDevice(settings.audioDevice, mode);
+  };
 
   const handleDeepScan = async () => {
     setIsScanning(true);
@@ -55,7 +81,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }) => {
   );
 
   return (
-    <div className="p-12 max-w-6xl space-y-16 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-40">
+    <div className="p-12 max-w-6xl space-y-16 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-40 overflow-y-auto h-full custom-scrollbar">
       <div className="flex items-center justify-between" dir="rtl">
         <div>
           <h2 className="text-5xl font-black mb-2 tracking-tighter text-white">معماری سیستم</h2>
@@ -122,7 +148,64 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }) => {
           </div>
           
           <div className="space-y-6">
-            <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[2.5rem] space-y-8">
+            {/* Audio Output Sub-section */}
+            <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[2.5rem] space-y-6" dir="rtl">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                  <Speaker size={12}/> خروجی صدا (Hardware Interface)
+                </p>
+                <button 
+                  onClick={refreshDevices} 
+                  className={`p-2 hover:bg-white/5 rounded-lg transition-all ${isRefreshing ? 'animate-spin' : ''}`}
+                >
+                  <RefreshCcw size={12} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[9px] font-bold text-zinc-600 mr-2">انتخاب دستگاه</label>
+                  <select 
+                    value={settings.audioDevice}
+                    onChange={(e) => handleDeviceChange(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-3 text-xs font-bold focus:outline-none focus:border-[var(--accent-color)] transition-colors"
+                  >
+                    {devices.map(d => (
+                      <option key={d.id} value={d.id}>{d.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[9px] font-bold text-zinc-600 mr-2">حالت خروجی (WASAPI)</label>
+                  <div className="flex gap-2 p-1 bg-black/20 rounded-2xl">
+                    <button 
+                      onClick={() => handleModeChange(AudioOutputMode.Shared)}
+                      className={`flex-1 py-2 rounded-xl text-[9px] font-black transition-all ${settings.audioOutputMode === AudioOutputMode.Shared ? 'bg-[var(--accent-color)] text-white shadow-lg' : 'text-zinc-600 hover:text-white'}`}
+                    >
+                      SHARED MODE
+                    </button>
+                    <button 
+                      onClick={() => handleModeChange(AudioOutputMode.Exclusive)}
+                      className={`flex-1 py-2 rounded-xl text-[9px] font-black transition-all ${settings.audioOutputMode === AudioOutputMode.Exclusive ? 'bg-amber-500 text-white shadow-lg' : 'text-zinc-600 hover:text-white'}`}
+                    >
+                      EXCLUSIVE MODE
+                    </button>
+                  </div>
+                </div>
+
+                {settings.audioOutputMode === AudioOutputMode.Exclusive && (
+                  <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-3">
+                    <Info size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-[9px] text-amber-200/70 leading-relaxed font-bold">
+                      حالت Exclusive باعث می‌شود ملودیکس کنترل کامل کارت صدا را در دست بگیرد. در این حالت سایر برنامه‌ها قادر به پخش صدا نخواهند بود.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[2.5rem] space-y-6">
               <div className="space-y-4">
                 <div className="flex justify-between text-[11px] font-black text-zinc-500 uppercase tracking-widest" dir="rtl">
                   <span>محو شدن آهنگ (Crossfade)</span>
@@ -133,21 +216,6 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }) => {
                   onChange={(e) => onUpdate({...settings, crossfadeSec: Number(e.target.value)})}
                   className="w-full"
                 />
-              </div>
-
-              <div className="space-y-3 pt-4 border-t border-white/5" dir="rtl">
-                <p className="text-[11px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                  <Speaker size={12}/> خروجی صدا (ASIO/WASAPI)
-                </p>
-                <select 
-                  value={settings.audioDevice}
-                  onChange={(e) => onUpdate({...settings, audioDevice: e.target.value})}
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-3 text-xs font-bold focus:outline-none focus:border-[var(--accent-color)] transition-colors"
-                >
-                  <option value="default">Default System Output</option>
-                  <option value="wasapi-exclusive">WASAPI Exclusive Mode</option>
-                  <option value="asio">ASIO High-Fidelity Interface</option>
-                </select>
               </div>
             </div>
             

@@ -59,6 +59,11 @@ export interface EQSettings {
   treble: number;
 }
 
+export enum AudioOutputMode {
+  Shared = 'shared',
+  Exclusive = 'exclusive'
+}
+
 export interface AppSettings {
   minFileSizeMB: number;
   minDurationSec: number;
@@ -74,7 +79,9 @@ export interface AppSettings {
   waveformEnabled: boolean;
   miniMode: boolean;
   gaplessPlayback: boolean;
-  audioDevice: string;
+  audioDevice: string; // The specific Device ID
+  audioOutputMode: AudioOutputMode;
+  targetSampleRate: number;
 }
 
 export enum NavigationTab {
@@ -86,9 +93,6 @@ export enum NavigationTab {
   About = 'about'
 }
 
-/**
- * Defines available viewing modes for the playlist section.
- */
 export enum PlaylistViewMode {
   Grid = 'grid',
   List = 'list',

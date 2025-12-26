@@ -38,17 +38,17 @@ const Player: React.FC<PlayerProps> = ({
   const engine = AudioEngine.getInstance();
   const [wavePeaks, setWavePeaks] = useState<number[]>([]);
   
-  // Optimization: Throttling control
+  // Performance Profiling: 30 FPS Throttling
   const lastUpdateRef = useRef<number>(0);
-  const FPS_LIMIT = 30; // Throttled to 30FPS to save CPU/GPU resources
+  const FPS_LIMIT = 30; 
   const FRAME_INTERVAL = 1000 / FPS_LIMIT;
 
-  // Real-time Spectrum Visualizer with Throttle
+  // Optimized Spectrum Visualizer
   useEffect(() => {
     if (!isPlaying || !spectrumRef.current || !visualizationEnabled) return;
     
     const canvas = spectrumRef.current;
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d', { alpha: false })!; // Alpha: false for GPU performance
     let animationFrame: number;
 
     const render = (time: number) => {
@@ -59,31 +59,23 @@ const Player: React.FC<PlayerProps> = ({
       lastUpdateRef.current = time;
 
       const dataArray = engine.getFrequencyData();
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
       
-      const bars = 30;
+      // Draw background manually since alpha is false
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      const bars = 25;
       const barWidth = canvas.width / bars;
       
-      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      gradient.addColorStop(0, '#3b82f6');
-      gradient.addColorStop(1, '#8b5cf6');
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent-color');
 
       for (let i = 0; i < bars; i++) {
         const index = Math.floor(i * (dataArray.length / bars));
         const val = dataArray[index] / 255;
-        const h = val * canvas.height * 0.9;
+        const h = val * canvas.height;
         
-        ctx.fillStyle = gradient;
-        ctx.globalAlpha = 0.4 + val * 0.6;
-        
-        const x = i * barWidth;
-        const y = canvas.height - h;
-        const w = barWidth - 2;
-        
-        // Draw rounded bars
-        ctx.beginPath();
-        ctx.roundRect(x, y, w, h, [2, 2, 0, 0]);
-        ctx.fill();
+        ctx.globalAlpha = 0.3 + val * 0.7;
+        ctx.fillRect(i * barWidth, canvas.height - h, barWidth - 2, h);
       }
       animationFrame = requestAnimationFrame(render);
     };
@@ -92,48 +84,38 @@ const Player: React.FC<PlayerProps> = ({
     return () => cancelAnimationFrame(animationFrame);
   }, [isPlaying, visualizationEnabled]);
 
-  // Waveform Calculation (Background Process)
+  // Efficient Waveform Loading
   useEffect(() => {
     if (currentSong && waveformEnabled) {
-      engine.getWaveformData(currentSong.url, 120).then(setWavePeaks);
+      // Use requestIdleCallback to decode without blocking UI
+      const task = (window as any).requestIdleCallback(() => {
+        engine.getWaveformData(currentSong.url, 80).then(setWavePeaks);
+      });
+      return () => (window as any).cancelIdleCallback(task);
     } else {
       setWavePeaks([]);
     }
   }, [currentSong?.id, waveformEnabled]);
 
-  // High-Quality Mirrored Waveform Rendering
+  // Optimized Waveform Canvas (Render only on progress change)
   useEffect(() => {
-    if (!waveformRef.current) return;
+    if (!waveformRef.current || !waveformEnabled || wavePeaks.length === 0) return;
+    
     const canvas = waveformRef.current;
     const ctx = canvas.getContext('2d')!;
-    const width = canvas.width;
-    const height = canvas.height;
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent-color');
     
-    ctx.clearRect(0, 0, width, height);
-
-    if (waveformEnabled && wavePeaks.length > 0) {
-      const barWidth = width / wavePeaks.length;
-      const centerY = height / 2;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const barWidth = canvas.width / wavePeaks.length;
+    const centerY = canvas.height / 2;
+    
+    for (let i = 0; i < wavePeaks.length; i++) {
+      const peak = wavePeaks[i];
+      const h = peak * (canvas.height / 2) * 0.8;
+      const isPlayed = (i / wavePeaks.length) < (progress / duration);
       
-      wavePeaks.forEach((peak, i) => {
-        const h = peak * (height / 2) * 0.85;
-        const isPlayed = (i / wavePeaks.length) < (progress / duration);
-        
-        ctx.fillStyle = isPlayed ? 'var(--accent-color)' : 'rgba(255, 255, 255, 0.15)';
-        
-        const x = i * barWidth;
-        // Mirrored bar drawing (DAW Style)
-        ctx.fillRect(x, centerY - h, barWidth - 1, h); // Top half
-        ctx.globalAlpha = 0.4;
-        ctx.fillRect(x, centerY, barWidth - 1, h * 0.6); // Bottom reflection
-        ctx.globalAlpha = 1.0;
-      });
-    } else {
-      // Classic fallback seeker line
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-      ctx.fillRect(0, height / 2 - 1, width, 2);
-      ctx.fillStyle = 'var(--accent-color)';
-      ctx.fillRect(0, height / 2 - 1, width * (progress / duration), 2);
+      ctx.fillStyle = isPlayed ? accent : 'rgba(255, 255, 255, 0.1)';
+      ctx.fillRect(i * barWidth, centerY - h, barWidth - 1, h * 2);
     }
   }, [wavePeaks, progress, duration, waveformEnabled]);
 
@@ -147,13 +129,13 @@ const Player: React.FC<PlayerProps> = ({
 
   return (
     <div className="h-24 mica border-t border-white/5 px-10 flex items-center justify-between gap-8 fixed bottom-0 left-0 right-0 z-[100] animate-in slide-in-from-bottom-full duration-700">
-      <div className="flex items-center gap-4 w-1/4 min-w-[250px]">
-        <img src={currentSong.coverUrl} className="w-14 h-14 rounded-xl object-cover shadow-xl border border-white/10" alt="" />
-        <div className="min-w-0">
+      <div className="flex items-center gap-4 w-1/4 min-w-[250px]" dir="rtl">
+        <img src={currentSong.coverUrl} className="w-14 h-14 rounded-xl object-cover shadow-xl border border-white/10" alt="" loading="lazy" />
+        <div className="min-w-0 text-right">
           <h4 className="font-bold text-sm truncate text-white tracking-tight">{currentSong.title}</h4>
           <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mt-0.5">{currentSong.artist}</p>
         </div>
-        <button className="ml-auto text-zinc-600 hover:text-pink-500 transition-all">
+        <button className="mr-auto text-zinc-600 hover:text-pink-500 transition-all">
           <Heart size={16} fill={currentSong.isFavorite ? "currentColor" : "none"} className={currentSong.isFavorite ? "text-pink-500" : ""} />
         </button>
       </div>
@@ -164,7 +146,7 @@ const Player: React.FC<PlayerProps> = ({
           <button onClick={onPrev} className="text-zinc-400 hover:text-white active:scale-90 transition-all"><SkipBack size={20} fill="currentColor" /></button>
           <button 
             onClick={onTogglePlay}
-            className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg"
+            className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg ripple"
           >
             {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-0.5" />}
           </button>
@@ -174,9 +156,7 @@ const Player: React.FC<PlayerProps> = ({
         
         <div className="w-full flex items-center gap-3 group relative">
           <span className="text-[9px] text-zinc-500 font-mono w-8 text-right">{formatTime(progress)}</span>
-          
           <div className="flex-1 relative h-10 flex items-center">
-            {/* Waveform Seeker Canvas */}
             <canvas ref={waveformRef} width={600} height={40} className="absolute inset-0 w-full h-full pointer-events-none" />
             <input 
               type="range" min="0" max={duration} value={progress}
@@ -184,7 +164,6 @@ const Player: React.FC<PlayerProps> = ({
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
             />
           </div>
-
           <span className="text-[9px] text-zinc-500 font-mono w-8">{formatTime(duration)}</span>
         </div>
       </div>
@@ -195,14 +174,12 @@ const Player: React.FC<PlayerProps> = ({
              <canvas ref={spectrumRef} width={100} height={40} className="w-full h-full opacity-80" />
           </div>
         )}
-
         <button onClick={onToggleQueue} className="p-2 text-zinc-500 hover:text-white transition-all"><ListMusic size={18}/></button>
-        <button onClick={onToggleEq} className={`p-2 rounded-xl transition-all ${isEqOpen ? 'text-blue-500' : 'text-zinc-500 hover:text-white'}`}><Activity size={18}/></button>
-        
+        <button onClick={onToggleEq} className={`p-2 rounded-xl transition-all ${isEqOpen ? 'text-[var(--accent-color)]' : 'text-zinc-500 hover:text-white'}`}><Activity size={18}/></button>
         <div className="flex items-center gap-2 w-24 group">
           <Volume2 size={14} className="text-zinc-500 group-hover:text-white shrink-0" />
           <div className="flex-1 relative h-1 bg-white/10 rounded-full">
-            <div className="absolute h-full bg-zinc-400 group-hover:bg-blue-500 rounded-full" style={{ width: `${volume * 100}%` }} />
+            <div className="absolute h-full bg-[var(--accent-color)] rounded-full" style={{ width: `${volume * 100}%` }} />
             <input type="range" min="0" max="1" step="0.01" value={volume} onChange={(e) => onVolumeChange(Number(e.target.value))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
           </div>
         </div>
