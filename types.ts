@@ -14,6 +14,7 @@ export interface Song {
   playCount: number;
   isSynced?: boolean;
   hasLyrics?: boolean;
+  replayGain?: number; // dB adjustment
 }
 
 export interface Playlist {
@@ -40,9 +41,11 @@ export interface AppSettings {
   floatingLyrics: boolean;
   accentColor: string;
   crossfadeSec: number;
-  autoNormalize: boolean;
-  visualizationEnabled: boolean;
+  autoNormalize: boolean; // Step 3: ReplayGain/Normalizer
+  visualizationEnabled: boolean; // Step 4: Spectrum
   miniMode: boolean;
+  gaplessPlayback: boolean; // Step 2: Gapless
+  audioDevice: string; // Step 11: Output Device
 }
 
 export enum NavigationTab {

@@ -1,21 +1,195 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Song } from '../types';
-import { Sparkles, CheckCircle, FileText, Music, Info, Mic2 } from 'lucide-react';
+import { 
+  Sparkles, Music, Mic2, Clock, 
+  Play, Heart, Zap, Flame, 
+  TrendingUp, Compass, Headphones
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface HomeViewProps {
   currentSong: Song | null;
   lyrics: string;
   isLoadingLyrics: boolean;
   currentTime: number;
+  onSongSelect: (song: Song) => void;
+  recentSongs: Song[];
+  library: Song[];
 }
 
-const HomeView: React.FC<HomeViewProps> = ({ currentSong, lyrics, isLoadingLyrics, currentTime }) => {
+const HomeView: React.FC<HomeViewProps> = ({ 
+  currentSong, lyrics, isLoadingLyrics, currentTime, onSongSelect, recentSongs, library 
+}) => {
+  const [activeView, setActiveView] = useState<'dashboard' | 'lyrics'>('dashboard');
+
+  const recommendations = useMemo(() => {
+    return [...library].sort(() => 0.5 - Math.random()).slice(0, 4);
+  }, [library]);
+
+  const moodAnalysis = useMemo(() => {
+    const genres = library.map(s => s.genre);
+    const topGenre = genres.sort((a,b) =>
+      genres.filter(v => v===a).length - genres.filter(v => v===b).length
+    ).pop();
+    return {
+      mood: topGenre === 'Ambient' ? 'آرام و متمرکز' : 'پرانرژی و پویا',
+      percentage: Math.floor(Math.random() * 30) + 70
+    };
+  }, [library]);
+
+  if (activeView === 'lyrics' && currentSong) {
+    return (
+      <div className="h-full flex flex-col p-12 animate-in fade-in zoom-in-95 duration-500">
+        <button 
+          onClick={() => setActiveView('dashboard')}
+          className="mb-8 flex items-center gap-2 text-zinc-500 hover:text-white transition-all text-xs font-black uppercase tracking-widest"
+        >
+          <Zap size={14} /> بازگشت به داشبورد
+        </button>
+        <LyricsContent currentSong={currentSong} lyrics={lyrics} isLoading={isLoadingLyrics} currentTime={currentTime} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full overflow-y-auto custom-scrollbar p-10 pb-40 space-y-16 animate-in fade-in duration-700">
+      {/* Hero Header */}
+      <section className="relative h-80 rounded-[3.5rem] overflow-hidden group">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/40 to-purple-600/40 mix-blend-overlay z-10" />
+        <img 
+          src={currentSong?.coverUrl || library[0]?.coverUrl} 
+          className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-50 group-hover:scale-100 group-hover:blur-none transition-all duration-1000" 
+          alt="" 
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-20" />
+        
+        <div className="relative z-30 h-full flex flex-col justify-end p-12" dir="rtl">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="px-4 py-1.5 rounded-full bg-blue-500 text-white text-[10px] font-black uppercase tracking-tighter">پیشنهاد هوش مصنوعی</span>
+            <span className="text-zinc-400 text-xs font-bold">براساس سلیقه شما</span>
+          </div>
+          <h1 className="text-6xl font-black text-white tracking-tighter mb-4">ملودیکس؛ تجربه هوشمند موسیقی</h1>
+          <div className="flex gap-4">
+            <button onClick={() => currentSong && onSongSelect(currentSong)} className="px-8 py-3.5 bg-white text-black rounded-2xl font-black flex items-center gap-3 hover:scale-105 transition-all shadow-2xl">
+              <Play size={18} fill="black" /> پخش اکنون
+            </button>
+            <button onClick={() => setActiveView('lyrics')} className="px-8 py-3.5 bg-white/10 backdrop-blur-xl text-white rounded-2xl font-black flex items-center gap-3 border border-white/10 hover:bg-white/20 transition-all">
+              <Mic2 size={18} /> مشاهده متن آهنگ
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Grid Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        {/* Left: Recently Played */}
+        <div className="lg:col-span-2 space-y-8" dir="rtl">
+          <div className="flex items-center justify-between">
+            <h3 className="text-2xl font-black flex items-center gap-3">
+              <Clock className="text-blue-500" /> اخیراً شنیده شده
+            </h3>
+            <button className="text-zinc-500 hover:text-white text-xs font-bold transition-all">مشاهده همه</button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {recentSongs.slice(0, 4).map(song => (
+              <motion.div 
+                key={song.id} 
+                whileHover={{ x: -10 }}
+                onClick={() => onSongSelect(song)}
+                className="flex items-center gap-4 p-4 bg-white/[0.03] border border-white/5 rounded-[2rem] cursor-pointer hover:bg-white/5 transition-all group"
+              >
+                <div className="relative w-16 h-16 shrink-0 rounded-2xl overflow-hidden shadow-lg">
+                  <img src={song.coverUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform" alt="" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <Play size={16} fill="white" className="text-white" />
+                  </div>
+                </div>
+                <div className="min-w-0">
+                  <h4 className="font-bold text-sm text-white truncate">{song.title}</h4>
+                  <p className="text-[10px] text-zinc-500 font-black uppercase tracking-wider truncate">{song.artist}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right: AI Insights */}
+        <div className="space-y-8" dir="rtl">
+          <h3 className="text-2xl font-black flex items-center gap-3">
+            <Sparkles className="text-purple-500" /> تحلیل وضعیت
+          </h3>
+          <div className="p-8 bg-gradient-to-br from-purple-600/10 to-blue-600/10 border border-white/10 rounded-[2.5rem] space-y-6 relative overflow-hidden group">
+            <TrendingUp className="absolute -right-4 -bottom-4 text-white/5 group-hover:scale-110 transition-transform duration-1000" size={120} />
+            <div className="space-y-2">
+              <p className="text-xs text-purple-400 font-black uppercase tracking-widest">Mood Analysis</p>
+              <h4 className="text-3xl font-black text-white">مود فعلی شما: <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">{moodAnalysis.mood}</span></h4>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                <span>Concentration Level</span>
+                <span className="text-white">{moodAnalysis.percentage}%</span>
+              </div>
+              <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${moodAnalysis.percentage}%` }}
+                  className="h-full bg-gradient-to-r from-purple-500 to-blue-500" 
+                />
+              </div>
+            </div>
+            <p className="text-[10px] text-zinc-500 leading-relaxed font-bold">
+              سیستم هوش مصنوعی ملودیکس پیشنهاد می‌کند در این وضعیت آهنگ‌های با ریتم آرام‌تر گوش دهید.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Discovery Section */}
+      <section className="space-y-8" dir="rtl">
+        <div className="flex items-center justify-between">
+          <h3 className="text-2xl font-black flex items-center gap-3">
+            <Compass className="text-green-500" /> کشف موزیک‌های جدید
+          </h3>
+          <div className="flex gap-2">
+            <div className="px-4 py-1.5 rounded-full bg-white/5 border border-white/5 text-[9px] font-black text-zinc-400 uppercase tracking-widest">Hot Hits</div>
+            <div className="px-4 py-1.5 rounded-full bg-white/5 border border-white/5 text-[9px] font-black text-zinc-400 uppercase tracking-widest">Fresh Drops</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          {recommendations.map(song => (
+            <motion.div 
+              key={song.id} 
+              whileHover={{ y: -10 }}
+              onClick={() => onSongSelect(song)}
+              className="group cursor-pointer"
+            >
+              <div className="aspect-square rounded-[2.5rem] overflow-hidden mb-5 relative shadow-2xl bg-zinc-900 border border-white/5">
+                <img src={song.coverUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt="" />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <div className="w-14 h-14 bg-white text-black rounded-full flex items-center justify-center shadow-2xl">
+                    <Play size={24} fill="currentColor" />
+                  </div>
+                </div>
+              </div>
+              <h4 className="font-bold text-white text-center truncate px-2">{song.title}</h4>
+              <p className="text-[10px] text-zinc-500 font-black uppercase text-center tracking-widest">{song.artist}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+};
+
+const LyricsContent: React.FC<{ currentSong: Song, lyrics: string, isLoading: boolean, currentTime: number }> = ({ currentSong, lyrics, isLoading, currentTime }) => {
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
   const syncedLines = useMemo(() => {
     if (!lyrics) return [];
     return lyrics.split('\n').map((line, i) => {
       const timeMatch = line.match(/\[(\d+):(\d+\.?\d*)\]/);
-      let time = i * 4; // Fallback simulation
+      let time = i * 4;
       let text = line;
       if (timeMatch) {
         time = parseInt(timeMatch[1]) * 60 + parseFloat(timeMatch[2]);
@@ -32,90 +206,61 @@ const HomeView: React.FC<HomeViewProps> = ({ currentSong, lyrics, isLoadingLyric
     return 0;
   }, [currentTime, syncedLines]);
 
-  if (!currentSong) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center text-zinc-600 gap-6">
-        <div className="w-32 h-32 rounded-full bg-white/5 flex items-center justify-center animate-pulse border border-white/5">
-          <Music size={48} />
-        </div>
-        <div className="text-center">
-          <p className="text-2xl font-bold text-zinc-400">Aurora AI Ready</p>
-          <p className="text-sm text-zinc-600">Select a local track to sync metadata</p>
-        </div>
-      </div>
-    );
-  }
+  React.useEffect(() => {
+    if (scrollRef.current) {
+      const activeElement = scrollRef.current.children[activeIndex] as HTMLElement;
+      if (activeElement) {
+        scrollRef.current.scrollTo({
+          top: activeElement.offsetTop - scrollRef.current.clientHeight / 2 + activeElement.clientHeight / 2,
+          behavior: 'smooth'
+        });
+      }
+    }
+  }, [activeIndex]);
 
   return (
-    <div className="h-full flex flex-col lg:flex-row p-8 lg:p-12 gap-8 lg:gap-16 animate-in fade-in duration-700 overflow-hidden">
-      {/* Left Side: Art & Info */}
-      <div className="w-full lg:w-2/5 flex flex-col gap-8 shrink-0">
-        <div className="relative group max-w-[450px] mx-auto lg:mx-0">
-          <img 
-            src={currentSong.coverUrl} 
-            className="w-full aspect-square rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.6)] object-cover border border-white/10 transition-transform duration-700 group-hover:scale-[1.02]"
-            alt={currentSong.title} 
-          />
-          {currentSong.isSynced && (
-            <div className="absolute top-6 right-6 bg-blue-500/90 backdrop-blur-md text-white p-2 rounded-2xl shadow-2xl flex items-center gap-2 px-4 text-[10px] font-black uppercase tracking-widest animate-in slide-in-from-top-4">
-              <Sparkles size={14} /> AI Verified
-            </div>
-          )}
+    <div className="flex-1 flex flex-col lg:flex-row gap-12 overflow-hidden">
+      <div className="w-full lg:w-1/3 space-y-8" dir="rtl">
+        <div className="aspect-square rounded-[3rem] overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.8)] border border-white/10">
+          <img src={currentSong.coverUrl} className="w-full h-full object-cover" alt="" />
         </div>
-        
-        <div className="space-y-4">
-          <h1 className="text-white font-black tracking-tighter leading-[0.9] overflow-visible" style={{ fontSize: 'clamp(2rem, 5vw, 4.5rem)' }}>
-            {currentSong.title}
-          </h1>
-          <p className="text-zinc-400 font-bold tracking-tight" style={{ fontSize: 'clamp(1rem, 2vw, 1.8rem)' }}>{currentSong.artist}</p>
-          <div className="flex items-center gap-3 pt-4 flex-wrap">
-            <div className="px-5 py-2 rounded-2xl bg-white/5 border border-white/5 text-[10px] font-black text-zinc-500 uppercase tracking-widest">
-              {currentSong.genre}
-            </div>
-            <div className="px-5 py-2 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-[10px] font-black text-blue-400 uppercase">
-              {currentSong.playCount} Plays
-            </div>
-            {currentSong.hasLyrics && (
-               <div className="flex items-center gap-2 px-5 py-2 rounded-2xl bg-green-500/10 border border-green-500/20 text-[10px] font-black text-green-400 uppercase">
-                 <Mic2 size={12} /> Musixmatch Sync
-               </div>
-            )}
+        <div className="space-y-2">
+          <h2 className="text-4xl font-black text-white">{currentSong.title}</h2>
+          <p className="text-xl text-zinc-500 font-bold">{currentSong.artist}</p>
+        </div>
+      </div>
+      <div 
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto space-y-12 p-12 custom-scrollbar mask-fade-v2"
+      >
+        {isLoading ? (
+          <div className="h-full flex flex-col items-center justify-center gap-6">
+            <div className="w-16 h-16 border-4 border-blue-600/10 border-t-blue-500 rounded-full animate-spin" />
+            <p className="text-zinc-500 font-black uppercase tracking-[0.2em] text-[10px]">Processing Stream...</p>
           </div>
-        </div>
+        ) : syncedLines.length > 0 ? (
+          syncedLines.map((line, i) => (
+            <motion.p 
+              key={i} 
+              animate={{ 
+                opacity: i === activeIndex ? 1 : 0.2, 
+                scale: i === activeIndex ? 1.1 : 1,
+                x: i === activeIndex ? 20 : 0
+              }}
+              className={`font-black tracking-tighter leading-[1.1] transition-all duration-500 ${i === activeIndex ? 'text-white' : 'text-zinc-600'}`}
+              style={{ fontSize: 'clamp(2rem, 5vw, 4.5rem)' }}
+            >
+              {line.text}
+            </motion.p>
+          ))
+        ) : (
+          <div className="h-full flex flex-col items-center justify-center text-zinc-700 opacity-30">
+             <Music size={80} />
+             <p className="text-3xl font-black italic mt-4">No Meta-Stream Available</p>
+          </div>
+        )}
       </div>
-
-      {/* Right Side: Lyrics Dashboard */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden bg-white/[0.02] rounded-[3rem] p-8 lg:p-12 border border-white/5 relative backdrop-blur-md">
-        <div className="flex items-center justify-between mb-8 shrink-0">
-          <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-500 flex items-center gap-2">
-            <FileText size={14} className="text-blue-400" /> Synced Stream
-          </h3>
-        </div>
-
-        <div className="flex-1 overflow-y-auto space-y-12 pr-4 custom-scrollbar mask-fade scroll-smooth">
-          {isLoadingLyrics ? (
-            <div className="h-full flex flex-col items-center justify-center gap-6">
-              <div className="w-14 h-14 border-[3px] border-blue-500/10 border-t-blue-400 rounded-full animate-spin" />
-              <p className="text-zinc-500 font-black uppercase tracking-[0.2em] text-[10px]">Updating Local Cache...</p>
-            </div>
-          ) : syncedLines.length > 0 ? (
-            syncedLines.map((line, i) => (
-              <p 
-                key={i} 
-                className={`font-black tracking-tighter transition-all duration-700 cursor-default ${i === activeIndex ? 'text-white scale-105 origin-left' : 'text-zinc-700 hover:text-zinc-500'}`}
-                style={{ fontSize: 'clamp(1.5rem, 4vw, 3.5rem)', lineHeight: 1.1 }}
-              >
-                {line.text}
-              </p>
-            ))
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center text-zinc-700 italic gap-4">
-               <Info size={40} className="opacity-10" />
-               <p className="text-lg font-medium opacity-40">No lyrics synced for this file.</p>
-            </div>
-          )}
-        </div>
-      </div>
+      <style dangerouslySetInnerHTML={{ __html: `.mask-fade-v2 { mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent); }` }} />
     </div>
   );
 };
