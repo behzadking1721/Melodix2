@@ -33,7 +33,7 @@ const HomeView: React.FC<HomeViewProps> = ({
       genres.filter(v => v===a).length - genres.filter(v => v===b).length
     ).pop();
     return {
-      mood: topGenre === 'Ambient' ? 'آرام و متمرکز' : 'پرانرژی و پویا',
+      mood: topGenre === 'Ambient' ? 'Calm & Focused' : 'Energetic & Dynamic',
       percentage: Math.floor(Math.random() * 30) + 70
     };
   }, [library]);
@@ -45,7 +45,7 @@ const HomeView: React.FC<HomeViewProps> = ({
           onClick={() => setActiveView('dashboard')}
           className="mb-8 flex items-center gap-2 text-zinc-500 hover:text-white transition-all text-xs font-black uppercase tracking-widest"
         >
-          <Zap size={14} /> بازگشت به داشبورد
+          <Zap size={14} /> Back to Dashboard
         </button>
         <LyricsContent currentSong={currentSong} lyrics={lyrics} isLoading={isLoadingLyrics} currentTime={currentTime} />
       </div>
@@ -64,18 +64,18 @@ const HomeView: React.FC<HomeViewProps> = ({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-20" />
         
-        <div className="relative z-30 h-full flex flex-col justify-end p-12" dir="rtl">
+        <div className="relative z-30 h-full flex flex-col justify-end p-12">
           <div className="flex items-center gap-3 mb-4">
-            <span className="px-4 py-1.5 rounded-full bg-blue-500 text-white text-[10px] font-black uppercase tracking-tighter">پیشنهاد هوش مصنوعی</span>
-            <span className="text-zinc-400 text-xs font-bold">براساس سلیقه شما</span>
+            <span className="px-4 py-1.5 rounded-full bg-blue-500 text-white text-[10px] font-black uppercase tracking-tighter">AI RECOMMENDATION</span>
+            <span className="text-zinc-400 text-xs font-bold">Based on your taste</span>
           </div>
-          <h1 className="text-6xl font-black text-white tracking-tighter mb-4">ملودیکس؛ تجربه هوشمند موسیقی</h1>
+          <h1 className="text-6xl font-black text-white tracking-tighter mb-4 leading-[0.9]">Experience Music Intelligently</h1>
           <div className="flex gap-4">
             <button onClick={() => currentSong && onSongSelect(currentSong)} className="px-8 py-3.5 bg-white text-black rounded-2xl font-black flex items-center gap-3 hover:scale-105 transition-all shadow-2xl">
-              <Play size={18} fill="black" /> پخش اکنون
+              <Play size={18} fill="black" /> Play Now
             </button>
             <button onClick={() => setActiveView('lyrics')} className="px-8 py-3.5 bg-white/10 backdrop-blur-xl text-white rounded-2xl font-black flex items-center gap-3 border border-white/10 hover:bg-white/20 transition-all">
-              <Mic2 size={18} /> مشاهده متن آهنگ
+              <Mic2 size={18} /> View Lyrics
             </button>
           </div>
         </div>
@@ -83,19 +83,18 @@ const HomeView: React.FC<HomeViewProps> = ({
 
       {/* Grid Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        {/* Left: Recently Played */}
-        <div className="lg:col-span-2 space-y-8" dir="rtl">
+        <div className="lg:col-span-2 space-y-8">
           <div className="flex items-center justify-between">
             <h3 className="text-2xl font-black flex items-center gap-3">
-              <Clock className="text-blue-500" /> اخیراً شنیده شده
+              <Clock className="text-blue-500" /> Recently Played
             </h3>
-            <button className="text-zinc-500 hover:text-white text-xs font-bold transition-all">مشاهده همه</button>
+            <button className="text-zinc-500 hover:text-white text-xs font-bold transition-all">View All</button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {recentSongs.slice(0, 4).map(song => (
               <motion.div 
                 key={song.id} 
-                whileHover={{ x: -10 }}
+                whileHover={{ x: 10 }}
                 onClick={() => onSongSelect(song)}
                 className="flex items-center gap-4 p-4 bg-white/[0.03] border border-white/5 rounded-[2rem] cursor-pointer hover:bg-white/5 transition-all group"
               >
@@ -114,16 +113,15 @@ const HomeView: React.FC<HomeViewProps> = ({
           </div>
         </div>
 
-        {/* Right: AI Insights */}
-        <div className="space-y-8" dir="rtl">
+        <div className="space-y-8">
           <h3 className="text-2xl font-black flex items-center gap-3">
-            <Sparkles className="text-purple-500" /> تحلیل وضعیت
+            <Sparkles className="text-purple-500" /> AI Insights
           </h3>
           <div className="p-8 bg-gradient-to-br from-purple-600/10 to-blue-600/10 border border-white/10 rounded-[2.5rem] space-y-6 relative overflow-hidden group">
             <TrendingUp className="absolute -right-4 -bottom-4 text-white/5 group-hover:scale-110 transition-transform duration-1000" size={120} />
             <div className="space-y-2">
               <p className="text-xs text-purple-400 font-black uppercase tracking-widest">Mood Analysis</p>
-              <h4 className="text-3xl font-black text-white">مود فعلی شما: <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">{moodAnalysis.mood}</span></h4>
+              <h4 className="text-3xl font-black text-white">Current Vibe: <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">{moodAnalysis.mood}</span></h4>
             </div>
             <div className="space-y-3">
               <div className="flex justify-between text-[10px] font-black text-zinc-500 uppercase tracking-widest">
@@ -139,22 +137,17 @@ const HomeView: React.FC<HomeViewProps> = ({
               </div>
             </div>
             <p className="text-[10px] text-zinc-500 leading-relaxed font-bold">
-              سیستم هوش مصنوعی ملودیکس پیشنهاد می‌کند در این وضعیت آهنگ‌های با ریتم آرام‌تر گوش دهید.
+              Melodix AI suggests listening to tracks with slower tempos to maintain this flow state.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Discovery Section */}
-      <section className="space-y-8" dir="rtl">
+      <section className="space-y-8">
         <div className="flex items-center justify-between">
           <h3 className="text-2xl font-black flex items-center gap-3">
-            <Compass className="text-green-500" /> کشف موزیک‌های جدید
+            <Compass className="text-green-500" /> Discover New Sounds
           </h3>
-          <div className="flex gap-2">
-            <div className="px-4 py-1.5 rounded-full bg-white/5 border border-white/5 text-[9px] font-black text-zinc-400 uppercase tracking-widest">Hot Hits</div>
-            <div className="px-4 py-1.5 rounded-full bg-white/5 border border-white/5 text-[9px] font-black text-zinc-400 uppercase tracking-widest">Fresh Drops</div>
-          </div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           {recommendations.map(song => (
@@ -184,7 +177,6 @@ const HomeView: React.FC<HomeViewProps> = ({
 
 const LyricsContent: React.FC<{ currentSong: Song, lyrics: string, isLoading: boolean, currentTime: number }> = ({ currentSong, lyrics, isLoading, currentTime }) => {
   const scrollRef = React.useRef<HTMLDivElement>(null);
-
   const syncedLines = useMemo(() => {
     if (!lyrics) return [];
     return lyrics.split('\n').map((line, i) => {
@@ -220,12 +212,12 @@ const LyricsContent: React.FC<{ currentSong: Song, lyrics: string, isLoading: bo
 
   return (
     <div className="flex-1 flex flex-col lg:flex-row gap-12 overflow-hidden">
-      <div className="w-full lg:w-1/3 space-y-8" dir="rtl">
+      <div className="w-full lg:w-1/3 space-y-8">
         <div className="aspect-square rounded-[3rem] overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.8)] border border-white/10">
           <img src={currentSong.coverUrl} className="w-full h-full object-cover" alt="" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-4xl font-black text-white">{currentSong.title}</h2>
+          <h2 className="text-4xl font-black text-white leading-none">{currentSong.title}</h2>
           <p className="text-xl text-zinc-500 font-bold">{currentSong.artist}</p>
         </div>
       </div>

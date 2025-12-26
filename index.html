@@ -6,14 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Melodix AI Player</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600;700&family=Vazirmatn:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --mica-bg: #0f0f0f;
             --accent-color: #3b82f6;
         }
         body {
-            font-family: "Segoe UI Variable Display", "Segoe UI", "Vazirmatn", sans-serif;
+            font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif;
             background-color: #000;
             color: #ffffff;
             overflow: hidden;
@@ -36,7 +36,6 @@
         .no-drag {
             -webkit-app-region: no-drag;
         }
-        /* Melodix Custom Scrollbar */
         ::-webkit-scrollbar {
             width: 4px;
         }
@@ -55,9 +54,6 @@
         }
         input[type="range"] {
           accent-color: var(--accent-color);
-        }
-        .mask-fade {
-          mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
         }
     </style>
 <script type="importmap">

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { 
-  Library, Settings, Info, Home, LayoutGrid, Zap 
+  Library, Settings, Info, Home, ListMusic, Zap 
 } from 'lucide-react';
 import { NavigationTab, Playlist } from '../types';
 
@@ -9,21 +9,25 @@ interface SidebarProps {
   activeTab: NavigationTab;
   onTabChange: (tab: NavigationTab) => void;
   playlists: Playlist[];
+  activePlaylistId: string | null;
+  onSelectPlaylist: (id: string) => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, playlists }) => {
+const Sidebar: React.FC<SidebarProps> = ({ 
+  activeTab, onTabChange, playlists, activePlaylistId, onSelectPlaylist 
+}) => {
   const NavItem = ({ icon: Icon, label, tab }: { icon: any, label: string, tab: NavigationTab }) => (
     <button
       onClick={() => onTabChange(tab)}
       className={`relative w-full flex items-center gap-4 px-5 py-3.5 rounded-2xl transition-all duration-300 group ${
-        activeTab === tab 
+        activeTab === tab && activePlaylistId === null
           ? 'bg-blue-600 text-white shadow-lg' 
           : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-300'
       }`}
     >
-      <Icon size={18} className={activeTab === tab ? 'text-white' : 'group-hover:text-blue-400'} />
+      <Icon size={18} className={activeTab === tab && activePlaylistId === null ? 'text-white' : 'group-hover:text-blue-400'} />
       <span className="text-[13px] font-bold tracking-tight capitalize">{label}</span>
-      {activeTab === tab && <div className="absolute right-4 w-1 h-1 bg-white rounded-full" />}
+      {activeTab === tab && activePlaylistId === null && <div className="absolute right-4 w-1 h-1 bg-white rounded-full" />}
     </button>
   );
 
@@ -35,9 +39,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, playlists }) 
       </div>
 
       <div className="space-y-2 mb-10">
-        <NavItem icon={Home} label="Main" tab={NavigationTab.Home} />
-        <NavItem icon={LayoutGrid} label="Playlist" tab={NavigationTab.Playlists} />
-        <NavItem icon={Library} label="Music's" tab={NavigationTab.AllSongs} />
+        <NavItem icon={Home} label="Home" tab={NavigationTab.Home} />
+        <NavItem icon={Library} label="Library" tab={NavigationTab.AllSongs} />
+        <NavItem icon={ListMusic} label="Playlists" tab={NavigationTab.Playlists} />
       </div>
 
       <div className="px-4 mb-4">
@@ -45,13 +49,19 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, playlists }) 
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar pr-1">
-        {playlists.filter(p => p.isSystem).map(p => (
+        {playlists.map(p => (
           <button 
             key={p.id} 
-            onClick={() => onTabChange(NavigationTab.Playlists)}
-            className="w-full text-left px-4 py-3 text-zinc-500 hover:text-white text-[11px] font-bold truncate rounded-xl hover:bg-white/5 flex items-center gap-3 transition-all group"
+            onClick={() => onSelectPlaylist(p.id)}
+            className={`w-full text-left px-4 py-3 text-[11px] font-bold truncate rounded-xl flex items-center gap-3 transition-all group ${
+              activePlaylistId === p.id 
+                ? 'bg-white/10 text-white border border-white/5' 
+                : 'text-zinc-500 hover:text-white hover:bg-white/5'
+            }`}
           >
-            <div className="w-1.5 h-1.5 rounded-full bg-zinc-800 group-hover:bg-blue-500 transition-colors" />
+            <div className={`w-1.5 h-1.5 rounded-full transition-colors ${
+              activePlaylistId === p.id ? 'bg-blue-500' : 'bg-zinc-800 group-hover:bg-blue-500'
+            }`} />
             <span className="truncate uppercase tracking-wider">{p.name}</span>
           </button>
         ))}
