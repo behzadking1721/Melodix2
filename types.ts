@@ -38,6 +38,9 @@ export interface AppSettings {
   alwaysOnTop: boolean;
   themeMode: 'auto' | 'light' | 'dark';
   floatingLyrics: boolean;
+  accentColor: string;
+  crossfadeSec: number;
+  autoNormalize: boolean;
 }
 
 export enum NavigationTab {
