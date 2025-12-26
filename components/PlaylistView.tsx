@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const MotionDiv = motion.div as any;
+
 interface PlaylistViewProps {
   playlists: Playlist[];
   songs: Song[];
@@ -59,7 +61,7 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({
   const CategoryCard = ({ id, name, icon: Icon, color }: { id: string, name: string, icon: any, color: string }) => {
     const categorySongs = getSongsForPlaylistId(id);
     return (
-      <motion.div 
+      <MotionDiv 
         whileHover={{ y: -5, scale: 1.02 }}
         onClick={() => onSelectPlaylist(id)}
         className="relative aspect-[4/5] p-6 bg-white/[0.02] border border-white/5 rounded-[2.5rem] cursor-pointer hover:bg-white/[0.05] transition-all group overflow-hidden"
@@ -78,7 +80,7 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({
         <div className="absolute bottom-6 right-6 p-3 bg-white/5 rounded-xl opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
           <ArrowRight size={16} className="text-white" />
         </div>
-      </motion.div>
+      </MotionDiv>
     );
   };
 
@@ -160,7 +162,6 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({
 
         <div className="flex gap-4">
           <button 
-            // Fix: Added missing dateCreated and lastModified properties to comply with Playlist interface
             onClick={() => onPlayPlaylist({ 
               id: selectedPlaylistId, 
               name: selectedPlaylist?.name || 'Collection', 

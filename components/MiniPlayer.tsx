@@ -4,6 +4,9 @@ import { motion } from 'framer-motion';
 import { Play, Pause, SkipBack, SkipForward, Maximize2 } from 'lucide-react';
 import { Song } from '../types';
 
+const MotionDiv = motion.div as any;
+const MotionImg = motion.img as any;
+
 interface MiniPlayerProps {
   currentSong: Song | null;
   isPlaying: boolean;
@@ -20,14 +23,14 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/80 backdrop-blur-xl z-[1000]">
-      <motion.div 
+      <MotionDiv 
         layoutId="player-container"
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.8, opacity: 0 }}
         className="relative w-80 h-80 rounded-[3rem] overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.9)] border border-white/10 group"
       >
-        <motion.img 
+        <MotionImg 
           layoutId={`cover-${currentSong.id}`}
           src={currentSong.coverUrl} className="w-full h-full object-cover" alt="" 
         />
@@ -37,10 +40,10 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({
             <Maximize2 size={18} />
           </button>
           
-          <motion.div initial={{ y: 20 }} animate={{ y: 0 }} className="mb-6">
+          <MotionDiv initial={{ y: 20 }} animate={{ y: 0 }} className="mb-6">
             <h4 className="font-black text-lg truncate w-56 text-white tracking-tighter">{currentSong.title}</h4>
             <p className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.3em] mt-1">{currentSong.artist}</p>
-          </motion.div>
+          </MotionDiv>
 
           <div className="flex items-center gap-8">
             <button onClick={onPrev} className="text-zinc-400 hover:text-white hover:scale-125 transition-all"><SkipBack size={24} fill="currentColor"/></button>
@@ -53,7 +56,7 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({
             <button onClick={onNext} className="text-zinc-400 hover:text-white hover:scale-125 transition-all"><SkipForward size={24} fill="currentColor"/></button>
           </div>
         </div>
-      </motion.div>
+      </MotionDiv>
     </div>
   );
 };

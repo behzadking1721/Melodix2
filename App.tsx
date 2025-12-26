@@ -19,6 +19,9 @@ import { fetchLyrics, suggestSongTags } from './services/geminiService';
 import { AudioEngine } from './services/audioEngine';
 import { queueManager } from './services/queueManager';
 
+const MotionMain = motion.main as any;
+const MotionDiv = motion.div as any;
+
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavigationTab>(NavigationTab.Home);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
@@ -32,7 +35,7 @@ const App: React.FC = () => {
   const [playlists, setPlaylists] = useState<Playlist[]>(() => {
     const saved = localStorage.getItem('melodix-playlists-v5');
     return saved ? JSON.parse(saved) : [
-      { id: 'favs', name: 'My Favorites', songIds: songs.filter(s => s.isFavorite).map(s => s.id), isSystem: true, dateCreated: Date.now(), lastModified: Date.now() }
+      { id: 'favs', name: 'موسیقی‌های مورد علاقه', songIds: songs.filter(s => s.isFavorite).map(s => s.id), isSystem: true, dateCreated: Date.now(), lastModified: Date.now() }
     ];
   });
 
@@ -44,8 +47,6 @@ const App: React.FC = () => {
   const [volume, setVolume] = useState(0.8);
   const [eqSettings, setEqSettings] = useState<EQSettings>({ bass: 0, mid: 0, treble: 0 });
   const [isEqOpen, setIsEqOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
   
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('melodix-settings-v10');
@@ -72,7 +73,24 @@ const App: React.FC = () => {
   const [isLyricsLoading, setIsLyricsLoading] = useState(false);
   const engine = useMemo(() => AudioEngine.getInstance(), []);
 
-  // Sync QueueManager with Local State
+  // Theme Sync Logic (Stage 6)
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--accent-color', settings.accentColor);
+    root.style.setProperty('--accent-glow', `${settings.accentColor}33`); // 20% Alpha
+    
+    if (settings.themeMode === 'light') {
+      root.classList.add('theme-light');
+    } else if (settings.themeMode === 'dark') {
+      root.classList.remove('theme-light');
+    } else {
+      const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      isSystemDark ? root.classList.remove('theme-light') : root.classList.add('theme-light');
+    }
+    
+    localStorage.setItem('melodix-settings-v10', JSON.stringify(settings));
+  }, [settings]);
+
   useEffect(() => {
     const unsubscribe = queueManager.subscribe(setQueue);
     return unsubscribe;
@@ -81,10 +99,8 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('melodix-library-v10', JSON.stringify(songs));
     localStorage.setItem('melodix-playlists-v5', JSON.stringify(playlists));
-    localStorage.setItem('melodix-settings-v10', JSON.stringify(settings));
-    document.documentElement.style.setProperty('--accent-color', settings.accentColor);
     engine.setCrossfade(settings.crossfadeSec);
-  }, [songs, settings, playlists]);
+  }, [songs, playlists]);
 
   useEffect(() => {
     engine.setEQ(eqSettings);
@@ -100,15 +116,11 @@ const App: React.FC = () => {
       const suggestions = await suggestSongTags(song);
       const lyrics = await fetchLyrics(suggestions.title || song.title, suggestions.artist || song.artist, song.id);
       setLyricsCache(prev => ({ ...prev, [song.id]: lyrics }));
-      handleUpdateSong({ ...song, ...suggestions, isSynced: true, hasLyrics: lyrics.length > 50 });
+      setSongs(prev => prev.map(s => s.id === song.id ? { ...s, ...suggestions, isSynced: true, hasLyrics: lyrics.length > 50 } : s));
     } catch (e) {
       console.error("AI Synchronization failed", e);
     }
     setIsLyricsLoading(false);
-  };
-
-  const handleUpdateSong = (updatedSong: Song) => {
-    setSongs(prev => prev.map(s => s.id === updatedSong.id ? updatedSong : s));
   };
 
   const handleSongSelect = (song: Song) => {
@@ -121,29 +133,14 @@ const App: React.FC = () => {
     setIsPlaying(true);
   };
 
-  const handlePlayPlaylist = (playlist: Playlist) => {
-    const playlistSongs = playlist.songIds
-      .map(id => songs.find(s => s.id === id))
-      .filter((s): s is Song => !!s);
-    
-    if (playlistSongs.length > 0) {
-      queueManager.setQueue(playlistSongs, 0);
-      setIsPlaying(true);
-    }
-  };
-
   useEffect(() => {
     if (currentSong) {
       engine.play(currentSong, settings.crossfadeSec > 0);
       handleSyncMetadata(currentSong);
     }
-
     const activeEl = engine.getActiveElement();
     const onTimeUpdate = () => setProgress(activeEl.currentTime);
-    const onEnded = () => {
-      if (settings.gaplessPlayback) handleNext();
-    };
-
+    const onEnded = () => settings.gaplessPlayback && handleNext();
     activeEl.addEventListener('timeupdate', onTimeUpdate);
     activeEl.addEventListener('ended', onEnded);
     return () => {
@@ -152,16 +149,11 @@ const App: React.FC = () => {
     };
   }, [currentSong?.id]);
 
-  useEffect(() => {
-    isPlaying ? engine.resume() : engine.pause();
-  }, [isPlaying]);
-
-  useEffect(() => {
-    engine.setVolume(volume);
-  }, [volume]);
+  useEffect(() => { isPlaying ? engine.resume() : engine.pause(); }, [isPlaying]);
+  useEffect(() => { engine.setVolume(volume); }, [volume]);
 
   return (
-    <div className={`flex h-screen w-screen overflow-hidden ${settings.themeMode === 'light' ? 'bg-zinc-100 text-zinc-900' : 'bg-[#050505] text-white'}`}>
+    <div className="flex h-screen w-screen overflow-hidden">
       <TitleBar />
       {!settings.miniMode && (
         <Sidebar 
@@ -173,81 +165,30 @@ const App: React.FC = () => {
         />
       )}
 
-      <motion.main layout className={`flex-1 h-full relative overflow-hidden ${settings.miniMode ? 'pt-0' : 'pt-10'}`}>
-        {settings.miniMode ? (
-          <MiniPlayer currentSong={currentSong} isPlaying={isPlaying} onTogglePlay={() => setIsPlaying(!isPlaying)} onNext={handleNext} onPrev={handlePrev} onRestore={() => setSettings({...settings, miniMode: false})} />
-        ) : (
-          <AnimatePresence mode="wait">
-            {activeTab === NavigationTab.Home && (
-              <HomeView 
-                key="home" currentSong={currentSong} lyrics={currentSong ? lyricsCache[currentSong.id] : ''} 
-                isLoadingLyrics={isLyricsLoading} currentTime={progress} onSongSelect={handleSongSelect}
-                recentSongs={queue.items.slice(0, 10)} library={songs}
-              />
-            )}
-            {activeTab === NavigationTab.AllSongs && (
-              <LibraryView 
-                key="lib" songs={songs} 
-                onSongSelect={handleSongSelect} 
-                onAddNext={(s) => queueManager.addNext(s)}
-                onAddToQueue={(s) => queueManager.addToEnd(s)}
-                currentSongId={currentSong?.id} 
-                onUpdateSong={handleUpdateSong} 
-              />
-            )}
-            {activeTab === NavigationTab.Playlists && (
-              <PlaylistView 
-                playlists={playlists} songs={songs} recentSongs={queue.items.slice(0, 10)}
-                selectedPlaylistId={selectedPlaylistId} onSelectPlaylist={setSelectedPlaylistId}
-                onPlayPlaylist={handlePlayPlaylist} onDeletePlaylist={(id) => setPlaylists(p => p.filter(pl => pl.id !== id))}
-                onCreatePlaylist={() => setIsCreatorOpen(true)} onSongSelect={handleSongSelect} currentSongId={currentSong?.id}
-              />
-            )}
+      <MotionMain layout className="flex-1 h-full relative overflow-hidden pt-10">
+        <AnimatePresence mode="wait">
+          <MotionDiv
+            key={activeTab + (selectedPlaylistId || '')}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.3, ease: "circOut" }}
+            className="h-full"
+          >
+            {activeTab === NavigationTab.Home && <HomeView currentSong={currentSong} lyrics={currentSong ? lyricsCache[currentSong.id] : ''} isLoadingLyrics={isLyricsLoading} currentTime={progress} onSongSelect={handleSongSelect} recentSongs={queue.items.slice(0, 10)} library={songs} />}
+            {activeTab === NavigationTab.AllSongs && <LibraryView songs={songs} onSongSelect={handleSongSelect} onAddNext={(s) => queueManager.addNext(s)} onAddToQueue={(s) => queueManager.addToEnd(s)} currentSongId={currentSong?.id} onUpdateSong={(s) => setSongs(prev => prev.map(old => old.id === s.id ? s : old))} />}
+            {activeTab === NavigationTab.Playlists && <PlaylistView playlists={playlists} songs={songs} recentSongs={queue.items.slice(0, 10)} selectedPlaylistId={selectedPlaylistId} onSelectPlaylist={setSelectedPlaylistId} onPlayPlaylist={(p) => queueManager.setQueue(p.songIds.map(id => songs.find(s => s.id === id)!), 0)} onDeletePlaylist={(id) => setPlaylists(p => p.filter(pl => pl.id !== id))} onCreatePlaylist={() => setIsCreatorOpen(true)} onSongSelect={handleSongSelect} currentSongId={currentSong?.id} />}
             {activeTab === NavigationTab.Settings && <SettingsView settings={settings} onUpdate={setSettings} />}
             {activeTab === NavigationTab.About && <AboutView />}
-            {activeTab === NavigationTab.Queue && (
-               <div className="p-12 h-full overflow-y-auto custom-scrollbar">
-                 <div className="flex justify-between items-center mb-10">
-                   <div>
-                     <h2 className="text-5xl font-black tracking-tighter text-white">صف انتظار</h2>
-                     <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest mt-2">Active Playback Stream</p>
-                   </div>
-                 </div>
-                 <Reorder.Group axis="y" values={queue.items} onReorder={(items) => queueManager.reorder(items)} className="space-y-2 pb-40">
-                    {queue.items.map((s, i) => (
-                      <Reorder.Item 
-                        key={s.id + i} value={s}
-                        className={`group flex items-center gap-4 p-4 rounded-3xl cursor-grab border transition-all ${i === queue.currentIndex ? 'bg-blue-600/20 border-blue-500/20' : 'bg-white/[0.02] border-white/5 hover:bg-white/5'}`}
-                      >
-                        <div className="w-10 text-[10px] font-black text-zinc-600">{i + 1}</div>
-                        <img src={s.coverUrl} className="w-12 h-12 rounded-2xl object-cover" alt="" />
-                        <div className="flex-1 min-w-0">
-                          <h4 className={`font-bold text-sm truncate ${i === queue.currentIndex ? 'text-blue-400' : 'text-white'}`}>{s.title}</h4>
-                          <p className="text-[10px] text-zinc-500 font-black uppercase truncate">{s.artist}</p>
-                        </div>
-                      </Reorder.Item>
-                    ))}
-                 </Reorder.Group>
-               </div>
-            )}
-          </AnimatePresence>
-        )}
-      </motion.main>
+          </MotionDiv>
+        </AnimatePresence>
+      </MotionMain>
 
-      {!settings.miniMode && (
-        <Player 
-          currentSong={currentSong} isPlaying={isPlaying} onTogglePlay={() => setIsPlaying(!isPlaying)}
-          progress={progress} duration={currentSong?.duration || 0} onSeek={val => engine.seek(val)} 
-          volume={volume} onVolumeChange={(v) => setVolume(v)} 
-          onToggleEq={() => setIsEqOpen(!isEqOpen)} isEqOpen={isEqOpen}
-          onNext={handleNext} onPrev={handlePrev} onToggleQueue={() => setActiveTab(NavigationTab.Queue)}
-          visualizationEnabled={settings.visualizationEnabled}
-          waveformEnabled={settings.waveformEnabled}
-        />
-      )}
+      {!settings.miniMode && <Player currentSong={currentSong} isPlaying={isPlaying} onTogglePlay={() => setIsPlaying(!isPlaying)} progress={progress} duration={currentSong?.duration || 0} onSeek={val => engine.seek(val)} volume={volume} onVolumeChange={setVolume} onToggleEq={() => setIsEqOpen(!isEqOpen)} isEqOpen={isEqOpen} onNext={handleNext} onPrev={handlePrev} onToggleQueue={() => setActiveTab(NavigationTab.Queue)} visualizationEnabled={settings.visualizationEnabled} waveformEnabled={settings.waveformEnabled} />}
       
       <Equalizer settings={eqSettings} onChange={setEqSettings} isOpen={isEqOpen} onClose={() => setIsEqOpen(false)} />
-      {isCreatorOpen && <SmartPlaylistCreator library={songs} onClose={() => setIsCreatorOpen(false)} onSave={(p) => { setPlaylists([...playlists, {...p, dateCreated: Date.now(), lastModified: Date.now()}]); setIsCreatorOpen(false); }} />}
+      {isCreatorOpen && <SmartPlaylistCreator library={songs} onClose={() => setIsCreatorOpen(false)} onSave={(p) => setPlaylists([...playlists, p])} />}
+      {settings.miniMode && <MiniPlayer currentSong={currentSong} isPlaying={isPlaying} onTogglePlay={() => setIsPlaying(!isPlaying)} onNext={handleNext} onPrev={handlePrev} onRestore={() => setSettings({...settings, miniMode: false})} />}
     </div>
   );
 };

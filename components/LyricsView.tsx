@@ -5,6 +5,9 @@ import { RefreshCw, Music, Sparkles, Languages, AlignLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { LrcParser } from '../services/lrcService';
 
+const MotionImg = motion.img as any;
+const MotionP = motion.p as any;
+
 interface LyricsViewProps {
   currentSong: Song | null;
   lyrics: string;
@@ -59,7 +62,7 @@ const LyricsView: React.FC<LyricsViewProps> = ({ currentSong, lyrics, isLoading,
     <div className="relative h-full flex flex-col p-12 overflow-hidden bg-black">
       <div className="flex items-center justify-between mb-12 z-20">
         <div className="flex items-center gap-6">
-          <motion.img 
+          <MotionImg 
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             src={currentSong.coverUrl} 
@@ -93,7 +96,7 @@ const LyricsView: React.FC<LyricsViewProps> = ({ currentSong, lyrics, isLoading,
           </div>
         ) : lyricsData.length > 0 ? (
           lyricsData.map((line, i) => (
-            <motion.p 
+            <MotionP 
               key={i} 
               animate={{ 
                 opacity: !isSyncMode || i === activeIndex ? 1 : (i < activeIndex ? 0.2 : 0.4),
@@ -104,7 +107,7 @@ const LyricsView: React.FC<LyricsViewProps> = ({ currentSong, lyrics, isLoading,
               style={{ fontSize: 'clamp(2.5rem, 5vw, 5rem)' }}
             >
               {line.text}
-            </motion.p>
+            </MotionP>
           ))
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-zinc-800">

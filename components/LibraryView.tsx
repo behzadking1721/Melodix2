@@ -9,6 +9,9 @@ import {
 import TagEditor from './TagEditor';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Declare cast motion components to fix JSX errors
+const MotionDiv = motion.div as any;
+
 interface LibraryViewProps {
   songs: Song[];
   onSongSelect: (song: Song) => void;
@@ -136,13 +139,13 @@ const LibraryView: React.FC<LibraryViewProps> = ({
       <div className="flex-1 overflow-y-auto custom-scrollbar px-8 pb-40">
         <AnimatePresence mode="wait">
           {searchQuery ? (
-            <motion.div key="search" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1">
+            <MotionDiv key="search" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1">
               {filteredData?.map(song => (
                 <SongRow key={song.id} song={song} onSelect={() => onSongSelect(song)} isPlaying={song.id === currentSongId} onAddNext={() => onAddNext(song)} onAddToQueue={() => onAddToQueue(song)} />
               ))}
-            </motion.div>
+            </MotionDiv>
           ) : path.type === 'root' ? (
-            <motion.div key="artists" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+            <MotionDiv key="artists" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
               {artists.map(artist => (
                 <div 
                   key={artist.name} 
@@ -161,9 +164,9 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                   </div>
                 </div>
               ))}
-            </motion.div>
+            </MotionDiv>
           ) : path.type === 'artist' ? (
-            <motion.div key="albums" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <MotionDiv key="albums" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {currentArtist?.albums.map(album => (
                 <div 
                   key={album.name}
@@ -180,9 +183,9 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                   <ChevronRight size={18} className="mr-auto self-center text-zinc-700 group-hover:text-white transition-colors" />
                 </div>
               ))}
-            </motion.div>
+            </MotionDiv>
           ) : (
-            <motion.div key="tracks" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1">
+            <MotionDiv key="tracks" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1">
                <div className="flex items-center gap-6 p-6 mb-8 bg-blue-600/10 rounded-[2.5rem] border border-blue-500/10" dir="rtl">
                  <img src={currentAlbum?.coverUrl} className="w-32 h-32 rounded-3xl shadow-2xl" />
                  <div>
@@ -198,7 +201,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                {currentAlbum?.songs.map(song => (
                  <SongRow key={song.id} song={song} onSelect={() => onSongSelect(song)} isPlaying={song.id === currentSongId} onAddNext={() => onAddNext(song)} onAddToQueue={() => onAddToQueue(song)} />
                ))}
-            </motion.div>
+            </MotionDiv>
           )}
         </AnimatePresence>
       </div>
