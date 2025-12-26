@@ -16,7 +16,7 @@ import TitleBar from './components/TitleBar';
 import { Song, NavigationTab, EQSettings, Playlist, AppSettings } from './types';
 import { MOCK_SONGS } from './constants';
 import { fetchLyrics, suggestSongTags } from './services/geminiService';
-import { cacheItem } from './services/dbService';
+import { AudioEngine } from './services/audioEngine';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavigationTab>(NavigationTab.Home);
@@ -79,7 +79,8 @@ const App: React.FC = () => {
   const [lyricsCache, setLyricsCache] = useState<Record<string, string>>({});
   const [isLyricsLoading, setIsLyricsLoading] = useState(false);
   
-  const audioPrimary = useRef<HTMLAudioElement | null>(null);
+  // Initialize AudioEngine Singleton
+  const engine = useMemo(() => AudioEngine.getInstance(), []);
 
   useEffect(() => {
     localStorage.setItem('melodix-library-v10', JSON.stringify(songs));
@@ -88,7 +89,13 @@ const App: React.FC = () => {
     localStorage.setItem('melodix-playlists-v5', JSON.stringify(playlists));
     localStorage.setItem('melodix-settings-v10', JSON.stringify(settings));
     document.documentElement.style.setProperty('--accent-color', settings.accentColor);
+    
+    engine.setCrossfade(settings.crossfadeSec);
   }, [songs, recentSongs, queue, settings, playlists]);
+
+  useEffect(() => {
+    engine.setEQ(eqSettings);
+  }, [eqSettings, engine]);
 
   const showSnackbar = (msg: string, type: 'success' | 'error' = 'success') => {
     setSnackbar({ msg, type });
@@ -118,13 +125,17 @@ const App: React.FC = () => {
   };
 
   const handleSongSelect = (song: Song) => {
-    setQueue([song]);
-    setQueueIndex(0);
+    const idx = queue.findIndex(s => s.id === song.id);
+    if (idx !== -1) {
+      setQueueIndex(idx);
+    } else {
+      setQueue([song, ...queue]);
+      setQueueIndex(0);
+    }
     setIsPlaying(true);
     setIsSearchFocused(false);
   };
 
-  // Fix: Implemented handlePlayPlaylist to resolve the compilation error
   const handlePlayPlaylist = (playlist: Playlist) => {
     const playlistSongs = playlist.songIds
       .map(id => songs.find(s => s.id === id))
@@ -143,26 +154,38 @@ const App: React.FC = () => {
     showSnackbar(`Playlist "${newPlaylist.name}" created!`);
   };
 
-  // Audio Engine logic (Stage 1)
+  // Integration with AudioEngine logic
   useEffect(() => {
-    if (!audioPrimary.current) audioPrimary.current = new Audio();
-    const active = audioPrimary.current;
-
-    if (active && currentSong && active.src !== currentSong.url) {
-      active.src = currentSong.url;
-      active.volume = volume;
-      if (isPlaying) active.play().catch(() => setIsPlaying(false));
+    if (currentSong) {
+      engine.play(currentSong, settings.crossfadeSec > 0);
       setRecentSongs(prev => [currentSong, ...prev.filter(s => s.id !== currentSong.id)].slice(0, 20));
-      
-      active.ontimeupdate = () => setProgress(active.currentTime);
-      active.onended = () => handleNext();
+      handleSyncMetadata(currentSong);
     }
-    if (currentSong) handleSyncMetadata(currentSong);
+
+    const activeEl = engine.getActiveElement();
+    const onTimeUpdate = () => setProgress(activeEl.currentTime);
+    const onEnded = () => {
+      if (settings.gaplessPlayback) {
+        handleNext();
+      }
+    };
+
+    activeEl.addEventListener('timeupdate', onTimeUpdate);
+    activeEl.addEventListener('ended', onEnded);
+    
+    return () => {
+      activeEl.removeEventListener('timeupdate', onTimeUpdate);
+      activeEl.removeEventListener('ended', onEnded);
+    };
   }, [currentSong?.id]);
 
   useEffect(() => {
-    if (audioPrimary.current) isPlaying ? audioPrimary.current.play().catch(() => {}) : audioPrimary.current.pause();
+    isPlaying ? engine.resume() : engine.pause();
   }, [isPlaying]);
+
+  useEffect(() => {
+    engine.setVolume(volume);
+  }, [volume]);
 
   return (
     <div className={`flex h-screen w-screen overflow-hidden ${settings.themeMode === 'light' ? 'bg-zinc-100 text-zinc-900' : 'bg-[#050505] text-white'}`}>
@@ -257,8 +280,8 @@ const App: React.FC = () => {
       {!settings.miniMode && (
         <Player 
           currentSong={currentSong} isPlaying={isPlaying} onTogglePlay={() => setIsPlaying(!isPlaying)}
-          progress={progress} duration={currentSong?.duration || 0} onSeek={val => { if (audioPrimary.current) audioPrimary.current.currentTime = val; }} 
-          volume={volume} onVolumeChange={(v) => { setVolume(v); if(audioPrimary.current) audioPrimary.current.volume = v; }} 
+          progress={progress} duration={currentSong?.duration || 0} onSeek={val => engine.seek(val)} 
+          volume={volume} onVolumeChange={(v) => setVolume(v)} 
           onToggleEq={() => setIsEqOpen(!isEqOpen)} isEqOpen={isEqOpen}
           onNext={handleNext} onPrev={handlePrev} onToggleQueue={() => setActiveTab(NavigationTab.Queue)}
         />
