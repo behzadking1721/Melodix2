@@ -70,6 +70,7 @@ const App: React.FC = () => {
       crossfadeSec: 5,
       autoNormalize: true,
       visualizationEnabled: true,
+      waveformEnabled: true,
       miniMode: false,
       gaplessPlayback: true,
       audioDevice: 'default'
@@ -79,7 +80,6 @@ const App: React.FC = () => {
   const [lyricsCache, setLyricsCache] = useState<Record<string, string>>({});
   const [isLyricsLoading, setIsLyricsLoading] = useState(false);
   
-  // Initialize AudioEngine Singleton
   const engine = useMemo(() => AudioEngine.getInstance(), []);
 
   useEffect(() => {
@@ -154,7 +154,6 @@ const App: React.FC = () => {
     showSnackbar(`Playlist "${newPlaylist.name}" created!`);
   };
 
-  // Integration with AudioEngine logic
   useEffect(() => {
     if (currentSong) {
       engine.play(currentSong, settings.crossfadeSec > 0);
@@ -284,6 +283,8 @@ const App: React.FC = () => {
           volume={volume} onVolumeChange={(v) => setVolume(v)} 
           onToggleEq={() => setIsEqOpen(!isEqOpen)} isEqOpen={isEqOpen}
           onNext={handleNext} onPrev={handlePrev} onToggleQueue={() => setActiveTab(NavigationTab.Queue)}
+          visualizationEnabled={settings.visualizationEnabled}
+          waveformEnabled={settings.waveformEnabled}
         />
       )}
       

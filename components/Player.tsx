@@ -1,10 +1,11 @@
 
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { 
   Play, Pause, SkipBack, SkipForward, Volume2, 
   Repeat, Shuffle, Heart, ListMusic, Activity 
 } from 'lucide-react';
 import { Song } from '../types';
+import { AudioEngine } from '../services/audioEngine';
 
 interface PlayerProps {
   currentSong: Song | null;
@@ -21,18 +22,23 @@ interface PlayerProps {
   onPrev: () => void;
   onToggleQueue: () => void;
   visualizationEnabled?: boolean;
+  waveformEnabled?: boolean;
 }
 
 const Player: React.FC<PlayerProps> = ({ 
   currentSong, isPlaying, onTogglePlay, 
   progress, duration, onSeek,
   volume, onVolumeChange, onToggleEq, isEqOpen,
-  onNext, onPrev, onToggleQueue, visualizationEnabled = true
+  onNext, onPrev, onToggleQueue, 
+  visualizationEnabled = true,
+  waveformEnabled = true
 }) => {
   const spectrumRef = useRef<HTMLCanvasElement>(null);
   const waveformRef = useRef<HTMLCanvasElement>(null);
+  const engine = AudioEngine.getInstance();
+  const [wavePeaks, setWavePeaks] = useState<number[]>([]);
 
-  // Advanced Spectrum Visualizer (FFT Simulation)
+  // Real-time Spectrum Visualizer
   useEffect(() => {
     if (!isPlaying || !spectrumRef.current || !visualizationEnabled) return;
     const canvas = spectrumRef.current;
@@ -40,7 +46,9 @@ const Player: React.FC<PlayerProps> = ({
     let animationFrame: number;
 
     const render = () => {
+      const dataArray = engine.getFrequencyData();
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
       const bars = 40;
       const barWidth = canvas.width / bars;
       
@@ -49,27 +57,20 @@ const Player: React.FC<PlayerProps> = ({
       gradient.addColorStop(1, '#8b5cf6');
 
       for (let i = 0; i < bars; i++) {
-        // Frequency simulation with intelligent noise
-        const factor = Math.sin(Date.now() * 0.008 + i * 0.2) * 0.4 + 0.6;
-        const h = factor * canvas.height * 0.9;
+        const index = Math.floor(i * (dataArray.length / bars));
+        const val = dataArray[index] / 255;
+        const h = val * canvas.height * 0.9;
         
         ctx.fillStyle = gradient;
-        ctx.globalAlpha = 0.3 + factor * 0.7;
+        ctx.globalAlpha = 0.3 + val * 0.7;
         
-        // Dynamic bar rendering with rounded tops
         ctx.beginPath();
         const x = i * barWidth;
         const y = canvas.height - h;
         const w = barWidth - 1.5;
-        const r = 3;
+        const r = 2;
         
-        ctx.moveTo(x + r, y);
-        ctx.lineTo(x + w - r, y);
-        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-        ctx.lineTo(x + w, canvas.height);
-        ctx.lineTo(x, canvas.height);
-        ctx.lineTo(x, y + r);
-        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.roundRect(x, y, w, h, [r, r, 0, 0]);
         ctx.fill();
       }
       animationFrame = requestAnimationFrame(render);
@@ -79,30 +80,44 @@ const Player: React.FC<PlayerProps> = ({
     return () => cancelAnimationFrame(animationFrame);
   }, [isPlaying, visualizationEnabled]);
 
-  // Waveform Seekbar Generation
+  // Real Waveform Calculation
   useEffect(() => {
-    if (!waveformRef.current || !currentSong) return;
+    if (currentSong && waveformEnabled) {
+      engine.getWaveformData(currentSong.url, 150).then(setWavePeaks);
+    } else {
+      setWavePeaks([]);
+    }
+  }, [currentSong?.id, waveformEnabled]);
+
+  // Waveform rendering
+  useEffect(() => {
+    if (!waveformRef.current) return;
     const canvas = waveformRef.current;
     const ctx = canvas.getContext('2d')!;
     const width = canvas.width;
     const height = canvas.height;
     
     ctx.clearRect(0, 0, width, height);
-    const bars = 150;
-    const barWidth = width / bars;
-    
-    for (let i = 0; i < bars; i++) {
-      const seed = (parseInt(currentSong.id.slice(-4), 16) || 1) * i;
-      const h = (Math.abs(Math.sin(seed * 0.05) * 0.6) + 0.1) * height;
-      
-      const isPlayed = (i / bars) < (progress / duration);
-      ctx.fillStyle = isPlayed ? 'rgba(59, 130, 246, 0.8)' : 'rgba(255, 255, 255, 0.15)';
-      
-      const x = i * barWidth;
-      const y = (height - h) / 2;
-      ctx.fillRect(x, y, barWidth - 1, h);
+
+    if (waveformEnabled && wavePeaks.length > 0) {
+      const barWidth = width / wavePeaks.length;
+      wavePeaks.forEach((peak, i) => {
+        const h = peak * height * 0.8;
+        const isPlayed = (i / wavePeaks.length) < (progress / duration);
+        
+        ctx.fillStyle = isPlayed ? 'var(--accent-color)' : 'rgba(255, 255, 255, 0.15)';
+        const x = i * barWidth;
+        const y = (height - h) / 2;
+        ctx.fillRect(x, y, barWidth - 1, h);
+      });
+    } else {
+      // Fallback simple line if waveform is disabled
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.fillRect(0, height / 2 - 1, width, 2);
+      ctx.fillStyle = 'var(--accent-color)';
+      ctx.fillRect(0, height / 2 - 1, width * (progress / duration), 2);
     }
-  }, [currentSong?.id, progress, duration]);
+  }, [wavePeaks, progress, duration, waveformEnabled]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

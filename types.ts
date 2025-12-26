@@ -52,6 +52,7 @@ export interface AppSettings {
   crossfadeSec: number;
   autoNormalize: boolean;
   visualizationEnabled: boolean;
+  waveformEnabled: boolean; // New in Stage 4
   miniMode: boolean;
   gaplessPlayback: boolean;
   audioDevice: string;

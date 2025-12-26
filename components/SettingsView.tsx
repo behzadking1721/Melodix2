@@ -68,7 +68,6 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        {/* Step 2, 3, 11: Audio Engine */}
         <section className="space-y-5">
           <div className="flex items-center gap-3">
             <Cpu size={18} className="text-blue-400" />
@@ -106,7 +105,6 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }) => {
           </div>
         </section>
 
-        {/* Step 4, 9: Visual Engine */}
         <section className="space-y-5">
           <div className="flex items-center gap-3">
             <Palette size={18} className="text-purple-400" />
@@ -128,6 +126,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }) => {
             </div>
 
             <Toggle label="Spectrum Visualization" description="High-performance FFT rendering." value={settings.visualizationEnabled} field="visualizationEnabled" />
+            <Toggle label="Waveform Seeker" description="Graphical peak representation for seekbar." value={settings.waveformEnabled} field="waveformEnabled" />
             <Toggle label="Floating Neural Lyrics" description="Overlay synced stream on main UI." value={settings.floatingLyrics} field="floatingLyrics" />
             
             <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
@@ -147,7 +146,6 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }) => {
         </section>
       </div>
 
-      {/* Database Step 10 & 12 */}
       <div className="p-10 bg-gradient-to-br from-blue-600/10 to-purple-600/10 border border-white/10 rounded-[3rem] flex items-center gap-8 relative overflow-hidden group">
         <Database className="text-blue-500/20 absolute -right-6 -bottom-6 group-hover:scale-110 transition-transform duration-1000" size={160} />
         <div className="space-y-4 relative z-10">

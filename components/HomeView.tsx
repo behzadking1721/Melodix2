@@ -1,12 +1,14 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Song } from '../types';
 import { 
   Sparkles, Music, Mic2, Clock, 
   Play, Heart, Zap, Flame, 
-  TrendingUp, Compass, Headphones
+  TrendingUp, Compass, Headphones,
+  ChevronRight, AlignLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { LrcParser, LrcLine } from '../services/lrcService';
 
 interface HomeViewProps {
   currentSong: Song | null;
@@ -43,9 +45,9 @@ const HomeView: React.FC<HomeViewProps> = ({
       <div className="h-full flex flex-col p-12 animate-in fade-in zoom-in-95 duration-500">
         <button 
           onClick={() => setActiveView('dashboard')}
-          className="mb-8 flex items-center gap-2 text-zinc-500 hover:text-white transition-all text-xs font-black uppercase tracking-widest"
+          className="mb-8 flex items-center gap-2 text-zinc-500 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"
         >
-          <Zap size={14} /> Back to Dashboard
+          <ChevronRight size={14} /> بازگشت به داشبورد
         </button>
         <LyricsContent currentSong={currentSong} lyrics={lyrics} isLoading={isLoadingLyrics} currentTime={currentTime} />
       </div>
@@ -75,7 +77,7 @@ const HomeView: React.FC<HomeViewProps> = ({
               <Play size={18} fill="black" /> Play Now
             </button>
             <button onClick={() => setActiveView('lyrics')} className="px-8 py-3.5 bg-white/10 backdrop-blur-xl text-white rounded-2xl font-black flex items-center gap-3 border border-white/10 hover:bg-white/20 transition-all">
-              <Mic2 size={18} /> View Lyrics
+              <Mic2 size={18} /> نمایش متن همگام
             </button>
           </div>
         </div>
@@ -136,70 +138,41 @@ const HomeView: React.FC<HomeViewProps> = ({
                 />
               </div>
             </div>
-            <p className="text-[10px] text-zinc-500 leading-relaxed font-bold">
-              Melodix AI suggests listening to tracks with slower tempos to maintain this flow state.
-            </p>
           </div>
         </div>
       </div>
-
-      <section className="space-y-8">
-        <div className="flex items-center justify-between">
-          <h3 className="text-2xl font-black flex items-center gap-3">
-            <Compass className="text-green-500" /> Discover New Sounds
-          </h3>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          {recommendations.map(song => (
-            <motion.div 
-              key={song.id} 
-              whileHover={{ y: -10 }}
-              onClick={() => onSongSelect(song)}
-              className="group cursor-pointer"
-            >
-              <div className="aspect-square rounded-[2.5rem] overflow-hidden mb-5 relative shadow-2xl bg-zinc-900 border border-white/5">
-                <img src={song.coverUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt="" />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                  <div className="w-14 h-14 bg-white text-black rounded-full flex items-center justify-center shadow-2xl">
-                    <Play size={24} fill="currentColor" />
-                  </div>
-                </div>
-              </div>
-              <h4 className="font-bold text-white text-center truncate px-2">{song.title}</h4>
-              <p className="text-[10px] text-zinc-500 font-black uppercase text-center tracking-widest">{song.artist}</p>
-            </motion.div>
-          ))}
-        </div>
-      </section>
     </div>
   );
 };
 
 const LyricsContent: React.FC<{ currentSong: Song, lyrics: string, isLoading: boolean, currentTime: number }> = ({ currentSong, lyrics, isLoading, currentTime }) => {
-  const scrollRef = React.useRef<HTMLDivElement>(null);
-  const syncedLines = useMemo(() => {
-    if (!lyrics) return [];
-    return lyrics.split('\n').map((line, i) => {
-      const timeMatch = line.match(/\[(\d+):(\d+\.?\d*)\]/);
-      let time = i * 4;
-      let text = line;
-      if (timeMatch) {
-        time = parseInt(timeMatch[1]) * 60 + parseFloat(timeMatch[2]);
-        text = line.replace(/\[.*?\]/g, '').trim();
-      }
-      return { text: text || line.trim(), time };
-    }).filter(l => l.text.length > 0);
-  }, [lyrics]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Logic: Parse lyrics using the new LrcParser
+  const isSyncMode = useMemo(() => LrcParser.isLrc(lyrics), [lyrics]);
+  
+  const lyricsData = useMemo(() => {
+    if (isSyncMode) {
+      return LrcParser.parse(lyrics);
+    }
+    // Fallback: Static lines
+    return lyrics.split('\n').filter(l => l.trim().length > 0).map((text, i) => ({
+      text: text.trim(),
+      time: i * 5 // Mock time for static
+    }));
+  }, [lyrics, isSyncMode]);
 
   const activeIndex = useMemo(() => {
-    for (let i = syncedLines.length - 1; i >= 0; i--) {
-      if (currentTime >= syncedLines[i].time) return i;
+    if (!isSyncMode) return -1;
+    for (let i = lyricsData.length - 1; i >= 0; i--) {
+      if (currentTime >= lyricsData[i].time) return i;
     }
     return 0;
-  }, [currentTime, syncedLines]);
+  }, [currentTime, lyricsData, isSyncMode]);
 
-  React.useEffect(() => {
-    if (scrollRef.current) {
+  // Effect: Smooth scrolling to active line
+  useEffect(() => {
+    if (isSyncMode && scrollRef.current && activeIndex !== -1) {
       const activeElement = scrollRef.current.children[activeIndex] as HTMLElement;
       if (activeElement) {
         scrollRef.current.scrollTo({
@@ -208,51 +181,88 @@ const LyricsContent: React.FC<{ currentSong: Song, lyrics: string, isLoading: bo
         });
       }
     }
-  }, [activeIndex]);
+  }, [activeIndex, isSyncMode]);
 
   return (
-    <div className="flex-1 flex flex-col lg:flex-row gap-12 overflow-hidden">
-      <div className="w-full lg:w-1/3 space-y-8">
-        <div className="aspect-square rounded-[3rem] overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.8)] border border-white/10">
-          <img src={currentSong.coverUrl} className="w-full h-full object-cover" alt="" />
+    <div className="flex-1 flex flex-col lg:flex-row gap-16 overflow-hidden">
+      {/* Album Side */}
+      <div className="w-full lg:w-1/3 space-y-10">
+        <div className="aspect-square rounded-[3.5rem] overflow-hidden shadow-[0_60px_120px_rgba(0,0,0,0.9)] border border-white/10 relative group">
+          <img src={currentSong.coverUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[3s]" alt="" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         </div>
-        <div className="space-y-2">
-          <h2 className="text-4xl font-black text-white leading-none">{currentSong.title}</h2>
-          <p className="text-xl text-zinc-500 font-bold">{currentSong.artist}</p>
+        <div className="space-y-3" dir="rtl">
+          <h2 className="text-4xl font-black text-white leading-tight tracking-tighter">{currentSong.title}</h2>
+          <div className="flex items-center gap-3">
+             <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-blue-500">
+                <Music size={14} />
+             </div>
+             <p className="text-xl text-zinc-500 font-bold">{currentSong.artist}</p>
+          </div>
+          <div className="pt-6 flex gap-3">
+            <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${isSyncMode ? 'bg-blue-600/20 text-blue-400 border border-blue-500/20' : 'bg-white/5 text-zinc-500'}`}>
+              {isSyncMode ? 'LRC Synced' : 'Static Text'}
+            </span>
+            <span className="px-4 py-1.5 rounded-xl bg-white/5 text-zinc-500 text-[10px] font-black uppercase tracking-widest border border-white/5">
+              AI Processed
+            </span>
+          </div>
         </div>
       </div>
+
+      {/* Lyrics Side */}
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-y-auto space-y-12 p-12 custom-scrollbar mask-fade-v2"
+        className={`flex-1 overflow-y-auto space-y-12 p-12 custom-scrollbar mask-fade-v2 ${!isSyncMode ? 'opacity-80' : ''}`}
       >
         {isLoading ? (
-          <div className="h-full flex flex-col items-center justify-center gap-6">
-            <div className="w-16 h-16 border-4 border-blue-600/10 border-t-blue-500 rounded-full animate-spin" />
-            <p className="text-zinc-500 font-black uppercase tracking-[0.2em] text-[10px]">Processing Stream...</p>
+          <div className="h-full flex flex-col items-center justify-center gap-8">
+            <div className="relative w-20 h-20">
+              <div className="absolute inset-0 border-4 border-blue-600/10 rounded-full" />
+              <div className="absolute inset-0 border-4 border-t-blue-500 rounded-full animate-spin" />
+              <Sparkles className="absolute inset-0 m-auto text-blue-500 animate-pulse" size={24} />
+            </div>
+            <div className="text-center">
+              <p className="text-white font-black uppercase tracking-[0.3em] text-xs">Neural Syncing</p>
+              <p className="text-zinc-600 text-[10px] mt-2 font-bold">در حال دریافت متادیتا و متون همگام...</p>
+            </div>
           </div>
-        ) : syncedLines.length > 0 ? (
-          syncedLines.map((line, i) => (
+        ) : lyricsData.length > 0 ? (
+          lyricsData.map((line, i) => (
             <motion.p 
               key={i} 
+              initial={false}
               animate={{ 
-                opacity: i === activeIndex ? 1 : 0.2, 
-                scale: i === activeIndex ? 1.1 : 1,
-                x: i === activeIndex ? 20 : 0
+                opacity: !isSyncMode || i === activeIndex ? 1 : (i < activeIndex ? 0.2 : 0.4), 
+                scale: isSyncMode && i === activeIndex ? 1.05 : 1,
+                filter: isSyncMode && i !== activeIndex ? 'blur(1px)' : 'blur(0px)',
+                x: isSyncMode && i === activeIndex ? 20 : 0
               }}
-              className={`font-black tracking-tighter leading-[1.1] transition-all duration-500 ${i === activeIndex ? 'text-white' : 'text-zinc-600'}`}
-              style={{ fontSize: 'clamp(2rem, 5vw, 4.5rem)' }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className={`font-black tracking-tighter leading-[1.1] cursor-default transition-all duration-700 ${i === activeIndex ? 'text-white' : 'text-zinc-700'} hover:text-blue-400/50`}
+              style={{ fontSize: 'clamp(2rem, 4vw, 4rem)' }}
             >
               {line.text}
             </motion.p>
           ))
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-zinc-700 opacity-30">
-             <Music size={80} />
-             <p className="text-3xl font-black italic mt-4">No Meta-Stream Available</p>
+          <div className="h-full flex flex-col items-center justify-center text-zinc-800">
+             <AlignLeft size={80} className="opacity-10 mb-6" />
+             <p className="text-2xl font-black italic">No Lyrics Found</p>
+             <button className="mt-6 px-6 py-3 bg-white/5 border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-white transition-all">
+               Retry AI Search
+             </button>
           </div>
         )}
       </div>
-      <style dangerouslySetInnerHTML={{ __html: `.mask-fade-v2 { mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent); }` }} />
+      <style dangerouslySetInnerHTML={{ __html: `
+        .mask-fade-v2 { 
+          mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent); 
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 0px;
+        }
+      ` }} />
     </div>
   );
 };
