@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, ListMusic, Minimize2, Trash2, Shuffle, Download, Upload, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Search, ListMusic, Minimize2, Trash2, Shuffle, Download, Upload, CheckCircle2, AlertCircle, Settings, Clock, Zap } from 'lucide-react';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import Sidebar from './components/Sidebar';
 import Player from './components/Player';
@@ -52,6 +52,11 @@ const App: React.FC = () => {
   const [eqSettings, setEqSettings] = useState<EQSettings>({ bass: 0, mid: 0, treble: 0 });
   const [isEqOpen, setIsEqOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+    const saved = localStorage.getItem('melodix-search-history');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [snackbar, setSnackbar] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
   
   const [settings, setSettings] = useState<AppSettings>(() => {
@@ -78,8 +83,6 @@ const App: React.FC = () => {
   const [isLyricsLoading, setIsLyricsLoading] = useState(false);
   
   const audioPrimary = useRef<HTMLAudioElement | null>(null);
-  const audioSecondary = useRef<HTMLAudioElement | null>(null);
-  const [activeEngine, setActiveEngine] = useState<'primary' | 'secondary'>('primary');
 
   useEffect(() => {
     localStorage.setItem('melodix-library-v10', JSON.stringify(songs));
@@ -87,8 +90,9 @@ const App: React.FC = () => {
     localStorage.setItem('melodix-queue-v3', JSON.stringify(queue));
     localStorage.setItem('melodix-playlists-v5', JSON.stringify(playlists));
     localStorage.setItem('melodix-settings-v10', JSON.stringify(settings));
+    localStorage.setItem('melodix-search-history', JSON.stringify(searchHistory));
     document.documentElement.style.setProperty('--accent-color', settings.accentColor);
-  }, [songs, recentSongs, queue, settings, playlists]);
+  }, [songs, recentSongs, queue, settings, playlists, searchHistory]);
 
   const showSnackbar = (msg: string, type: 'success' | 'error' = 'success') => {
     setSnackbar({ msg, type });
@@ -121,6 +125,11 @@ const App: React.FC = () => {
     setQueue([song]);
     setQueueIndex(0);
     setIsPlaying(true);
+    // Add to search history if matching query
+    if (searchQuery && !searchHistory.includes(searchQuery)) {
+      setSearchHistory(prev => [searchQuery, ...prev].slice(0, 5));
+    }
+    setIsSearchFocused(false);
   };
 
   const handleCreatePlaylist = (newPlaylist: Playlist) => {
@@ -136,43 +145,40 @@ const App: React.FC = () => {
   };
 
   const handlePlayPlaylist = (playlist: Playlist) => {
-    const playlistSongs = playlist.songIds
-      .map(id => songs.find(s => s.id === id))
-      .filter((s): s is Song => !!s);
-    
-    if (playlistSongs.length > 0) {
-      setQueue(playlistSongs);
+    const pSongs = songs.filter(s => playlist.songIds.includes(s.id));
+    if (pSongs.length > 0) {
+      setQueue(pSongs);
       setQueueIndex(0);
       setIsPlaying(true);
-      showSnackbar(`Now playing: ${playlist.name}`);
+      showSnackbar(`Streaming: ${playlist.name}`);
     }
   };
 
   const filteredSongs = useMemo(() => {
-    if (!searchQuery) return songs;
+    if (!searchQuery) return [];
     const q = searchQuery.toLowerCase();
     return songs.filter(s => 
       s.title.toLowerCase().includes(q) || 
-      s.artist.toLowerCase().includes(q) || 
-      (s.album && s.album.toLowerCase().includes(q))
-    );
+      s.artist.toLowerCase().includes(q)
+    ).slice(0, 5);
   }, [songs, searchQuery]);
 
-  // Audio Logic (Simplified for clarity)
+  // Audio Engine logic
   useEffect(() => {
-    const active = activeEngine === 'primary' ? audioPrimary.current : audioSecondary.current;
+    if (!audioPrimary.current) audioPrimary.current = new Audio();
+    const active = audioPrimary.current;
+
     if (active && currentSong && active.src !== currentSong.url) {
       active.src = currentSong.url;
       active.volume = volume;
       if (isPlaying) active.play().catch(() => setIsPlaying(false));
-      setRecentSongs(prev => [currentSong, ...prev.filter(s => s.id !== currentSong.id)].slice(0, 10));
+      setRecentSongs(prev => [currentSong, ...prev.filter(s => s.id !== currentSong.id)].slice(0, 20));
     }
     if (currentSong) handleSyncMetadata(currentSong);
   }, [currentSong?.id]);
 
   useEffect(() => {
-    const active = activeEngine === 'primary' ? audioPrimary.current : audioSecondary.current;
-    if (active) isPlaying ? active.play().catch(() => {}) : active.pause();
+    if (audioPrimary.current) isPlaying ? audioPrimary.current.play().catch(() => {}) : audioPrimary.current.pause();
   }, [isPlaying]);
 
   return (
@@ -190,15 +196,67 @@ const App: React.FC = () => {
 
       <motion.main layout className={`flex-1 h-full relative overflow-hidden ${settings.miniMode ? 'pt-0' : 'pt-10'}`}>
         {!settings.miniMode && (
-          <div className="fixed top-12 right-10 flex flex-col items-end gap-2 z-[300]">
+          <div className="fixed top-12 right-10 flex items-center gap-2 z-[300]">
+             {/* Enhanced Smart Search */}
              <div className="relative group">
                <input 
-                 type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                 placeholder="Search Library..." className="bg-black/40 border border-white/5 rounded-2xl py-2 px-4 text-xs font-bold focus:w-80 transition-all w-48 backdrop-blur-3xl focus:border-blue-500/50 outline-none"
+                 type="text" value={searchQuery} 
+                 onChange={(e) => setSearchQuery(e.target.value)}
+                 onFocus={() => setIsSearchFocused(true)}
+                 onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+                 placeholder="Search Intelligence..." className="bg-black/40 border border-white/5 rounded-xl py-2 px-4 text-xs font-bold focus:w-80 transition-all w-48 backdrop-blur-3xl focus:border-blue-500/50 outline-none h-10 pr-10"
                />
-               <Search size={14} className="absolute right-3 top-2.5 text-zinc-500 pointer-events-none group-focus-within:text-blue-500 transition-colors" />
+               <Search size={14} className="absolute right-3 top-3 text-zinc-500 pointer-events-none group-focus-within:text-blue-500 transition-colors" />
+               
+               <AnimatePresence>
+                 {isSearchFocused && (searchQuery || searchHistory.length > 0) && (
+                   <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute top-12 right-0 w-80 bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl backdrop-blur-3xl overflow-hidden p-4 space-y-4 z-[400]"
+                   >
+                     {searchQuery && filteredSongs.length > 0 && (
+                       <div className="space-y-2">
+                         <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest px-2">Suggestions</p>
+                         {filteredSongs.map(s => (
+                           <div key={s.id} onClick={() => handleSongSelect(s)} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-xl cursor-pointer group transition-all">
+                             <img src={s.coverUrl} className="w-8 h-8 rounded-lg object-cover" alt="" />
+                             <div className="min-w-0">
+                               <p className="text-xs font-bold text-white truncate">{s.title}</p>
+                               <p className="text-[9px] text-zinc-500 font-black uppercase truncate">{s.artist}</p>
+                             </div>
+                             <Zap size={10} className="ml-auto opacity-0 group-hover:opacity-100 text-blue-500" />
+                           </div>
+                         ))}
+                       </div>
+                     )}
+
+                     {searchHistory.length > 0 && (
+                       <div className="space-y-2">
+                         <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest px-2">Recent History</p>
+                         {searchHistory.map((h, idx) => (
+                           <div key={idx} onClick={() => setSearchQuery(h)} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-xl cursor-pointer text-xs font-bold text-zinc-400 hover:text-white transition-all">
+                             <Clock size={12} className="text-zinc-600" />
+                             <span>{h}</span>
+                           </div>
+                         ))}
+                       </div>
+                     )}
+                   </motion.div>
+                 )}
+               </AnimatePresence>
              </div>
-             <button onClick={() => setSettings({...settings, miniMode: true})} className="p-3 rounded-2xl bg-black/40 border border-white/5 text-zinc-400 hover:text-white backdrop-blur-3xl hover:bg-white/10 transition-all"><Minimize2 size={16} /></button>
+
+             <button 
+              onClick={() => setActiveTab(NavigationTab.Settings)} 
+              className={`p-3 rounded-xl border transition-all h-10 w-10 flex items-center justify-center backdrop-blur-3xl ${activeTab === NavigationTab.Settings ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' : 'bg-black/40 border-white/5 text-zinc-400 hover:text-white hover:bg-white/10'}`}
+             >
+               <Settings size={16} />
+             </button>
+             <button onClick={() => setSettings({...settings, miniMode: true})} className="p-3 rounded-xl bg-black/40 border border-white/5 text-zinc-400 hover:text-white backdrop-blur-3xl hover:bg-white/10 transition-all h-10 w-10 flex items-center justify-center">
+               <Minimize2 size={16} />
+             </button>
           </div>
         )}
 
@@ -218,11 +276,12 @@ const App: React.FC = () => {
                 library={songs}
               />
             )}
-            {activeTab === NavigationTab.AllSongs && <LibraryView key="lib" songs={filteredSongs} onSongSelect={handleSongSelect} currentSongId={currentSong?.id} onUpdateSong={handleUpdateSong} onAddToQueue={(s) => setQueue([...queue, s])} />}
+            {activeTab === NavigationTab.AllSongs && <LibraryView key="lib" songs={songs} onSongSelect={handleSongSelect} currentSongId={currentSong?.id} onUpdateSong={handleUpdateSong} onAddToQueue={(s) => setQueue([...queue, s])} />}
             {activeTab === NavigationTab.Playlists && (
               <PlaylistView 
                 playlists={playlists} 
                 songs={songs}
+                recentSongs={recentSongs}
                 selectedPlaylistId={selectedPlaylistId}
                 onSelectPlaylist={setSelectedPlaylistId}
                 onPlayPlaylist={handlePlayPlaylist}
@@ -237,7 +296,7 @@ const App: React.FC = () => {
                <div className="p-12 h-full overflow-y-auto custom-scrollbar">
                  <div className="flex justify-between items-center mb-10">
                    <div>
-                     <h2 className="text-5xl font-black tracking-tighter">Smart Queue</h2>
+                     <h2 className="text-5xl font-black tracking-tighter text-white">Smart Queue</h2>
                      <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest mt-2">Active Asset Stream</p>
                    </div>
                    <div className="flex gap-2">
@@ -246,7 +305,7 @@ const App: React.FC = () => {
                    </div>
                  </div>
                  
-                 <Reorder.Group axis="y" values={queue} onReorder={setQueue} className="space-y-2">
+                 <Reorder.Group axis="y" values={queue} onReorder={setQueue} className="space-y-2 pb-40">
                     {queue.map((s, i) => (
                       <Reorder.Item 
                         key={s.id + i} 
@@ -275,17 +334,15 @@ const App: React.FC = () => {
         <Player 
           currentSong={currentSong} isPlaying={isPlaying} onTogglePlay={() => setIsPlaying(!isPlaying)}
           progress={progress} duration={currentSong?.duration || 0} onSeek={val => { 
-            const active = activeEngine === 'primary' ? audioPrimary.current : audioSecondary.current;
-            if (active) active.currentTime = val; 
+            if (audioPrimary.current) audioPrimary.current.currentTime = val; 
           }} volume={volume} onVolumeChange={setVolume} onToggleEq={() => setIsEqOpen(!isEqOpen)} isEqOpen={isEqOpen}
           onNext={handleNext} onPrev={handlePrev} onToggleQueue={() => setActiveTab(NavigationTab.Queue)}
         />
       )}
       
       <Equalizer settings={eqSettings} onChange={setEqSettings} isOpen={isEqOpen} onClose={() => setIsEqOpen(false)} />
-      
       {isCreatorOpen && <SmartPlaylistCreator library={songs} onClose={() => setIsCreatorOpen(false)} onSave={handleCreatePlaylist} />}
-
+      
       <AnimatePresence>
         {snackbar && (
           <motion.div 

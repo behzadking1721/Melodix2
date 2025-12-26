@@ -14,7 +14,15 @@ export interface Song {
   playCount: number;
   isSynced?: boolean;
   hasLyrics?: boolean;
-  replayGain?: number; // dB adjustment
+  lrcContent?: string; // Stage 3: Sync Lyrics
+  replayGain?: number; // Stage 1: Auto Volume Leveling (dB)
+  bpm?: number;
+}
+
+export enum PlaylistViewMode {
+  Detailed = 'detailed',
+  Compact = 'compact',
+  Grid = 'grid'
 }
 
 export interface Playlist {
@@ -41,11 +49,11 @@ export interface AppSettings {
   floatingLyrics: boolean;
   accentColor: string;
   crossfadeSec: number;
-  autoNormalize: boolean; // Step 3: ReplayGain/Normalizer
-  visualizationEnabled: boolean; // Step 4: Spectrum
+  autoNormalize: boolean;
+  visualizationEnabled: boolean;
   miniMode: boolean;
-  gaplessPlayback: boolean; // Step 2: Gapless
-  audioDevice: string; // Step 11: Output Device
+  gaplessPlayback: boolean;
+  audioDevice: string;
 }
 
 export enum NavigationTab {
