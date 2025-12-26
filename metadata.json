@@ -1,0 +1,16 @@
+{
+  "name": "Aurora Music Player",
+  "identity": "Aurora.MusicPlayer.App",
+  "publisher": "CN=YourName",
+  "version": "2.1.0.0",
+  "description": "Professional high-performance music player for Windows 11 with AI capabilities.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ],
+  "capabilities": [
+    "musicLibrary",
+    "internetClient",
+    "backgroundMediaPlayback"
+  ]
+}
