@@ -30,10 +30,9 @@ const LibraryView: React.FC<LibraryViewProps> = ({
   songs, onSongSelect, onAddNext, onAddToQueue, currentSongId, onUpdateSong
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [path, setPath] = useState<DrillDownPath>({ type: 'root', id: null, label: 'کتابخانه' });
+  const [path, setPath] = useState<DrillDownPath>({ type: 'root', id: null, label: 'Library' });
   const [editingSong, setEditingSong] = useState<Song | null>(null);
 
-  // Grouping Logic with Performance Optimization
   const artists = useMemo(() => {
     const artistMap = new Map<string, ArtistViewModel>();
     
@@ -69,7 +68,6 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     return Array.from(artistMap.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [songs]);
 
-  // Throttled Search Logic
   const filteredData = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
     if (!query) return null;
@@ -91,7 +89,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     if (path.type === 'album') {
       setPath({ type: 'artist', id: currentArtist?.name || null, label: currentArtist?.name || '' });
     } else {
-      setPath({ type: 'root', id: null, label: 'کتابخانه' });
+      setPath({ type: 'root', id: null, label: 'Library' });
     }
   };
 
@@ -108,8 +106,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
 
   return (
     <div className="h-full flex flex-col bg-transparent overflow-hidden">
-      {/* Header with Breadcrumbs */}
-      <div className="p-8 pb-4 flex items-center justify-between gap-6" dir="rtl">
+      <div className="p-8 pb-4 flex items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           {path.type !== 'root' && (
             <button onClick={handleBack} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl transition-all">
@@ -119,24 +116,23 @@ const LibraryView: React.FC<LibraryViewProps> = ({
           <div>
             <h2 className="text-4xl font-black text-white tracking-tighter">{path.label}</h2>
             <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mt-1">
-              {path.type === 'root' ? `${artists.length} هنرمند` : path.type === 'artist' ? `${currentArtist?.albums.length} آلبوم` : `${currentAlbum?.songs.length} قطعه موسیقی`}
+              {path.type === 'root' ? `${artists.length} Artists` : path.type === 'artist' ? `${currentArtist?.albums.length} Albums` : `${currentAlbum?.songs.length} Tracks`}
             </p>
           </div>
         </div>
 
         <div className="relative group">
-          <Search size={14} className="absolute right-4 top-3.5 text-zinc-500 pointer-events-none group-focus-within:text-[var(--accent-color)] transition-colors" />
+          <Search size={14} className="absolute left-4 top-3.5 text-zinc-500 pointer-events-none group-focus-within:text-[var(--accent-color)] transition-colors" />
           <input 
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="جستجوی سریع..."
-            className="bg-white/5 border border-white/5 rounded-2xl py-3 pr-10 pl-4 text-xs font-bold focus:w-80 w-48 transition-all outline-none"
+            placeholder="Quick search..."
+            className="bg-white/5 border border-white/5 rounded-2xl py-3 pl-10 pr-4 text-xs font-bold focus:w-80 w-48 transition-all outline-none"
           />
         </div>
       </div>
 
-      {/* Main Content with Virtualization */}
       <div className="flex-1 px-8">
         <AnimatePresence mode="wait">
           {searchQuery ? (
@@ -156,9 +152,9 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                     <img src={artist.coverUrl} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-700" loading="lazy" />
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Mic2 size={32} /></div>
                   </div>
-                  <div className="text-center" dir="rtl">
+                  <div className="text-center">
                     <h4 className="font-bold text-sm text-white truncate px-2">{artist.name}</h4>
-                    <p className="text-[9px] text-zinc-500 font-black uppercase">{artist.albums.length} آلبوم</p>
+                    <p className="text-[9px] text-zinc-500 font-black uppercase">{artist.albums.length} Albums</p>
                   </div>
                 </div>
               ))}
@@ -166,24 +162,24 @@ const LibraryView: React.FC<LibraryViewProps> = ({
           ) : path.type === 'artist' ? (
             <MotionDiv key="albums" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-40 overflow-y-auto h-full custom-scrollbar">
               {currentArtist?.albums.map(album => (
-                <div key={album.name} onClick={() => setPath({ type: 'album', id: album.name, label: album.name })} className="p-6 mica rounded-[2.5rem] flex gap-6 hover:bg-white/5 transition-all cursor-pointer group" dir="rtl">
+                <div key={album.name} onClick={() => setPath({ type: 'album', id: album.name, label: album.name })} className="p-6 mica rounded-[2.5rem] flex gap-6 hover:bg-white/5 transition-all cursor-pointer group">
                   <img src={album.coverUrl} className="w-24 h-24 rounded-2xl shadow-lg object-cover" loading="lazy" />
                   <div className="flex flex-col justify-center min-w-0">
                     <h4 className="text-lg font-black text-white truncate">{album.name}</h4>
                     <p className="text-xs text-zinc-500 font-bold">{album.year}</p>
-                    <p className="text-[10px] text-[var(--accent-color)] font-black uppercase mt-2">{album.songs.length} آهنگ</p>
+                    <p className="text-[10px] text-[var(--accent-color)] font-black uppercase mt-2">{album.songs.length} Tracks</p>
                   </div>
                 </div>
               ))}
             </MotionDiv>
           ) : (
             <div className="h-full">
-               <div className="flex items-center gap-6 p-8 mb-8 bg-[var(--accent-color)]/10 rounded-[3rem] border border-[var(--accent-color)]/10" dir="rtl">
+               <div className="flex items-center gap-6 p-8 mb-8 bg-[var(--accent-color)]/10 rounded-[3rem] border border-[var(--accent-color)]/10">
                  <img src={currentAlbum?.coverUrl} className="w-40 h-40 rounded-[2rem] shadow-2xl" />
-                 <div className="space-y-2">
+                 <div className="space-y-2 text-left">
                    <h3 className="text-4xl font-black text-white">{currentAlbum?.name}</h3>
                    <p className="text-xl text-[var(--accent-color)] font-bold">{currentAlbum?.artist}</p>
-                   <button onClick={() => currentAlbum && onSongSelect(currentAlbum.songs[0])} className="mt-4 px-8 py-3 bg-white text-black rounded-2xl font-black text-xs hover:scale-105 transition-all shadow-xl">پخش کل آلبوم</button>
+                   <button onClick={() => currentAlbum && onSongSelect(currentAlbum.songs[0])} className="mt-4 px-8 py-3 bg-white text-black rounded-2xl font-black text-xs hover:scale-105 transition-all shadow-xl">Play Entire Album</button>
                  </div>
                </div>
                <VirtualList 
@@ -205,9 +201,9 @@ const LibraryView: React.FC<LibraryViewProps> = ({
 };
 
 const SongRow = ({ song, onSelect, isPlaying, onAddNext, onAddToQueue }: { song: Song, onSelect: () => void, isPlaying: boolean, onAddNext: () => void, onAddToQueue: () => void }) => (
-  <div className={`group flex items-center gap-4 px-6 h-14 rounded-2xl transition-all cursor-pointer ${isPlaying ? 'bg-[var(--accent-color)]/10' : 'hover:bg-white/5'}`} dir="rtl" onClick={onSelect}>
+  <div className={`group flex items-center gap-4 px-6 h-14 rounded-2xl transition-all cursor-pointer ${isPlaying ? 'bg-[var(--accent-color)]/10' : 'hover:bg-white/5'}`} onClick={onSelect}>
     <div className="w-8 text-[10px] font-black text-zinc-700">{song.trackNumber || '•'}</div>
-    <div className="flex-1 min-w-0 text-right">
+    <div className="flex-1 min-w-0 text-left">
       <h4 className={`font-bold text-sm truncate ${isPlaying ? 'text-[var(--accent-color)]' : 'text-white'}`}>{song.title}</h4>
       <p className="text-[10px] text-zinc-500 font-black uppercase truncate">{song.artist}</p>
     </div>
@@ -215,7 +211,7 @@ const SongRow = ({ song, onSelect, isPlaying, onAddNext, onAddToQueue }: { song:
       <button onClick={(e) => { e.stopPropagation(); onAddNext(); }} className="p-2 text-zinc-500 hover:text-white"><Zap size={14}/></button>
       <button onClick={(e) => { e.stopPropagation(); onAddToQueue(); }} className="p-2 text-zinc-500 hover:text-white"><PlusCircle size={14}/></button>
     </div>
-    <div className="w-12 text-left text-[10px] font-mono text-zinc-600">
+    <div className="w-12 text-right text-[10px] font-mono text-zinc-600">
       {Math.floor(song.duration / 60)}:{(song.duration % 60).toString().padStart(2, '0')}
     </div>
   </div>

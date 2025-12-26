@@ -10,22 +10,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 const MotionDiv = motion.div as any;
 
 const LIBRARIES = [
-  { name: 'NAudio', license: 'MIT', role: 'پایه موتور پردازش صوتی', link: 'https://github.com/naudio/NAudio' },
-  { name: 'TagLib#', license: 'LGPL', role: 'مدیریت متادیتا و فایل‌ها', link: 'https://github.com/mono/taglib-sharp' },
-  { name: 'LiteDB', license: 'MIT', role: 'دیتابیس ابری محلی سریع', link: 'https://www.litedb.org/' },
-  { name: 'Material Design XAML', license: 'MIT', role: 'الگوهای طراحی بصری', link: 'https://materialdesigninxaml.net/' },
-  { name: 'Framer Motion', license: 'MIT', role: 'ارکستراسیون انیمیشن‌ها', link: 'https://www.framer.com/motion/' },
-  { name: 'Lucide Icons', license: 'ISC', role: 'سیستم آیکون‌های وکتور', link: 'https://lucide.dev/' }
+  { name: 'NAudio', license: 'MIT', role: 'Professional Audio Processing', link: 'https://github.com/naudio/NAudio' },
+  { name: 'TagLib#', license: 'LGPL', role: 'File Metadata Management', link: 'https://github.com/mono/taglib-sharp' },
+  { name: 'LiteDB', license: 'MIT', role: 'Fast Local Cloud Database', link: 'https://www.litedb.org/' },
+  { name: 'Material Design XAML', license: 'MIT', role: 'Visual Design Patterns', link: 'https://materialdesigninxaml.net/' },
+  { name: 'Framer Motion', license: 'MIT', role: 'Animation Orchestration', link: 'https://www.framer.com/motion/' },
+  { name: 'Lucide Icons', license: 'ISC', role: 'Vector Icon System', link: 'https://lucide.dev/' }
 ];
 
 const AboutView: React.FC = () => {
   const [showLicense, setShowLicense] = useState(false);
 
   return (
-    <div className="h-full overflow-y-auto custom-scrollbar p-12 pb-40" dir="rtl">
+    <div className="h-full overflow-y-auto custom-scrollbar p-12 pb-40">
       <div className="max-w-4xl mx-auto space-y-16">
         
-        {/* Brand Header */}
         <header className="flex flex-col items-center text-center space-y-6">
           <MotionDiv 
             initial={{ scale: 0.5, opacity: 0 }}
@@ -36,20 +35,19 @@ const AboutView: React.FC = () => {
           </MotionDiv>
           <div className="space-y-2">
             <h1 className="text-6xl font-black tracking-tighter text-[var(--text-primary)]">Melodix AI</h1>
-            <p className="text-zinc-500 font-bold">نسخه 6.0.42 (نسخه پایدار)</p>
+            <p className="text-zinc-500 font-bold">Version 6.0.42 (Stable Build)</p>
           </div>
           <p className="text-lg text-[var(--text-secondary)] leading-relaxed max-w-2xl">
-            ملودیکس یک موزیک‌پلیر مدرن و هوشمند است که با تمرکز بر کیفیت صدای بی‌نقص و رابط کاربری مینیمال طراحی شده است. 
-            این پروژه با الهام از Dopamine و Zune، قدرت پردازش محلی را با هوش مصنوعی Gemini ترکیب می‌کند.
+            Melodix is a modern and intelligent music player focused on flawless sound quality and minimal interface design.
+            Inspired by Dopamine and Zune, it combines local processing power with Gemini AI.
           </p>
         </header>
 
-        {/* Features & Tech */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
-            { icon: Cpu, label: 'موتور صوتی', val: '64-bit DSP' },
-            { icon: Shield, label: 'حریم خصوصی', val: 'کاملاً آفلاین' },
-            { icon: Zap, label: 'هوش مصنوعی', val: 'Gemini Pro' }
+            { icon: Cpu, label: 'Audio Engine', val: '64-bit DSP' },
+            { icon: Shield, label: 'Privacy', val: 'Fully Offline' },
+            { icon: Zap, label: 'Artificial Intel', val: 'Gemini Pro' }
           ].map(item => (
             <div key={item.label} className="p-8 mica rounded-[2rem] text-center space-y-3">
               <item.icon className="mx-auto text-[var(--accent-color)]" size={24} />
@@ -59,11 +57,10 @@ const AboutView: React.FC = () => {
           ))}
         </section>
 
-        {/* Libraries Section */}
-        <section className="space-y-8">
+        <section className="space-y-8 text-left">
           <div className="flex items-center gap-4">
             <Code2 size={24} className="text-[var(--accent-color)]" />
-            <h3 className="text-2xl font-black">کتابخانه‌های اوپن‌سورس</h3>
+            <h3 className="text-2xl font-black">Open Source Libraries</h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {LIBRARIES.map((lib) => (
@@ -81,24 +78,22 @@ const AboutView: React.FC = () => {
           </div>
         </section>
 
-        {/* Footer Actions */}
         <footer className="flex flex-col items-center gap-8 pt-10 border-t border-[var(--border-color)]">
           <div className="flex gap-4">
             <button 
               onClick={() => setShowLicense(true)}
               className="px-8 py-3 bg-[var(--surface)] hover:bg-[var(--surface-hover)] border border-[var(--border-color)] rounded-2xl text-sm font-bold flex items-center gap-2 transition-all"
             >
-              <ScrollText size={18} /> مشاهده لایسنس Melodix
+              <ScrollText size={18} /> View Melodix License
             </button>
             <button className="px-8 py-3 bg-[var(--accent-color)] text-white rounded-2xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-all accent-glow">
-              <Github size={18} /> گیت‌هاب پروژه
+              <Github size={18} /> Project GitHub
             </button>
           </div>
           <p className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.5em]">Engineering by MelodixLabs • 2025</p>
         </footer>
       </div>
 
-      {/* License Modal */}
       <AnimatePresence>
         {showLicense && (
           <div className="fixed inset-0 z-[1000] flex items-center justify-center p-8">

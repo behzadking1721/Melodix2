@@ -11,6 +11,7 @@ import Equalizer from './components/Equalizer';
 import SettingsView from './components/SettingsView';
 import AboutView from './components/AboutView';
 import SmartPlaylistCreator from './components/SmartPlaylistCreator';
+import SmartSearch from './components/SmartSearch';
 import TitleBar from './components/TitleBar';
 import CrashView from './components/CrashView';
 import { Song, NavigationTab, EQSettings, Playlist, AppSettings, QueueState, AudioOutputMode, ThemeDefinition } from './types';
@@ -29,6 +30,7 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavigationTab>(NavigationTab.Home);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
   const [isCreatorOpen, setIsCreatorOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [fatalError, setFatalError] = useState<Error | null>(null);
   const [notifications, setNotifications] = useState<MelodixError[]>([]);
@@ -131,8 +133,29 @@ const App: React.FC = () => {
   useEffect(() => {
     if (currentSong) {
       engine.play(currentSong, (settings?.crossfadeSec ?? 0) > 0);
+      setIsPlaying(true);
     }
   }, [currentSong?.id]);
+
+  // Audio state sync
+  useEffect(() => {
+    const el = engine.getActiveElement();
+    const update = () => setProgress(el.currentTime);
+    el.addEventListener('timeupdate', update);
+    el.addEventListener('ended', () => {
+      setIsPlaying(false);
+      queueManager.next();
+    });
+    return () => {
+      el.removeEventListener('timeupdate', update);
+    };
+  }, [currentSong]);
+
+  const handleTogglePlay = () => {
+    if (isPlaying) engine.pause();
+    else engine.resume();
+    setIsPlaying(!isPlaying);
+  };
 
   if (fatalError) return <CrashView error={fatalError} onRestart={() => window.location.reload()} />;
 
@@ -148,8 +171,8 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[var(--mica-bg)]">
-      <TitleBar />
+    <div className="flex h-screen w-screen overflow-hidden bg-[var(--mica-bg)]" dir="ltr">
+      <TitleBar onOpenSearch={() => setIsSearchOpen(true)} />
       <Sidebar 
         activeTab={activeTab} 
         onTabChange={setActiveTab} 
@@ -167,7 +190,19 @@ const App: React.FC = () => {
             exit={{ opacity: 0 }}
             className="h-full"
           >
-            {activeTab === NavigationTab.Home && <HomeView currentSong={currentSong} lyrics="" isLoadingLyrics={false} currentTime={progress} onSongSelect={(s) => queueManager.setQueue([s], 0)} recentSongs={queue.items.slice(0, 10)} library={songs} />}
+            {activeTab === NavigationTab.Home && (
+              <HomeView 
+                currentSong={currentSong} 
+                lyrics="" 
+                isLoadingLyrics={false} 
+                currentTime={progress} 
+                onSongSelect={(s) => queueManager.setQueue([s], 0)} 
+                recentSongs={queue.items.slice(0, 10)} 
+                library={songs}
+                isPlaying={isPlaying}
+                onTogglePlay={handleTogglePlay}
+              />
+            )}
             {activeTab === NavigationTab.AllSongs && <LibraryView songs={songs} onSongSelect={(s) => queueManager.setQueue([s], 0)} onAddNext={(s) => queueManager.addNext(s)} onAddToQueue={(s) => queueManager.addToEnd(s)} currentSongId={currentSong?.id} onUpdateSong={(s) => setSongs(prev => prev.map(o => o.id === s.id ? s : o))} />}
             {activeTab === NavigationTab.Playlists && <PlaylistView playlists={playlists} songs={songs} recentSongs={queue.items.slice(0, 10)} selectedPlaylistId={selectedPlaylistId} onSelectPlaylist={setSelectedPlaylistId} onPlayPlaylist={(p) => queueManager.setQueue(p.songIds.map(id => songs.find(s => s.id === id)!), 0)} onDeletePlaylist={(id) => setPlaylists(p => p.filter(pl => pl.id !== id))} onCreatePlaylist={() => setIsCreatorOpen(true)} onSongSelect={(s) => queueManager.setQueue([s], 0)} currentSongId={currentSong?.id} />}
             {activeTab === NavigationTab.Settings && <SettingsView settings={settings} onUpdate={setSettings} />}
@@ -175,16 +210,15 @@ const App: React.FC = () => {
           </MotionDiv>
         </AnimatePresence>
 
-        <div className="fixed bottom-28 right-10 z-[500] space-y-3 pointer-events-none">
+        <div className="fixed bottom-28 left-10 z-[500] space-y-3 pointer-events-none">
           <AnimatePresence>
             {notifications.map((n, i) => (
               <MotionDiv
                 key={i}
-                initial={{ opacity: 0, x: 50, scale: 0.9 }}
+                initial={{ opacity: 0, x: -50, scale: 0.9 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 className={`p-5 rounded-2xl flex items-center gap-4 border shadow-2xl pointer-events-auto mica ${n.severity === ErrorSeverity.LOW ? 'border-zinc-800' : 'border-red-600/20 bg-red-600/5'}`}
-                dir="rtl"
               >
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${n.severity === ErrorSeverity.LOW ? 'bg-zinc-800 text-zinc-400' : 'bg-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.3)]'}`}>
                   <AlertCircle size={20} />
@@ -200,15 +234,23 @@ const App: React.FC = () => {
       </MotionMain>
 
       <Player 
-        currentSong={currentSong} isPlaying={isPlaying} onTogglePlay={() => setIsPlaying(!isPlaying)} 
+        currentSong={currentSong} isPlaying={isPlaying} onTogglePlay={handleTogglePlay} 
         progress={progress} duration={currentSong?.duration || 0} onSeek={val => engine.seek(val)} 
-        volume={volume} onVolumeChange={setVolume} onToggleEq={() => setIsEqOpen(!isEqOpen)} isEqOpen={isEqOpen} 
+        volume={volume} onVolumeChange={(v) => { setVolume(v); engine.setVolume(v); }} onToggleEq={() => setIsEqOpen(!isEqOpen)} isEqOpen={isEqOpen} 
         onNext={() => queueManager.next()} onPrev={() => queueManager.prev()} onToggleQueue={() => setActiveTab(NavigationTab.Queue)} 
         visualizationEnabled={settings.visualizationEnabled} waveformEnabled={settings.waveformEnabled} 
       />
       
-      <Equalizer settings={eqSettings} onChange={setEqSettings} isOpen={isEqOpen} onClose={() => setIsEqOpen(false)} />
+      <Equalizer settings={eqSettings} onChange={(s) => { setEqSettings(s); engine.setEQ(s); }} isOpen={isEqOpen} onClose={() => setIsEqOpen(false)} />
       {isCreatorOpen && <SmartPlaylistCreator library={songs} onClose={() => setIsCreatorOpen(false)} onSave={(p) => setPlaylists([...playlists, p])} />}
+      
+      <SmartSearch 
+        isOpen={isSearchOpen} 
+        onClose={() => setIsSearchOpen(false)} 
+        songs={songs} 
+        currentSong={currentSong}
+        onSongSelect={(s) => queueManager.setQueue([s], 0)} 
+      />
     </div>
   );
 };

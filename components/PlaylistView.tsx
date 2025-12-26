@@ -6,7 +6,7 @@ import {
   Clock, Trash2, Sparkles, ChevronLeft,
   MoreVertical, Heart, Zap, Flame, Mic2, Disc, 
   History, Library, AlignLeft, LayoutList, LayoutGrid, Columns,
-  ArrowRight
+  ArrowRight, ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -44,7 +44,7 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({
     if (id === 'system-with-lyrics') return songs.filter(s => s.hasLyrics);
     
     const p = playlists.find(pl => pl.id === id);
-    return p ? p.songIds.map(sid => songs.find(s => s.id === sid)).filter((s): s is Song => !!s) : [];
+    return p ? p.songIds.map(sid => songs.find(s => s.id === id)).filter((s): s is Song => !!s) : [];
   };
 
   const playlistSongs = useMemo(() => {
@@ -67,7 +67,7 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({
         className="relative aspect-[4/5] p-6 bg-white/[0.02] border border-white/5 rounded-[2.5rem] cursor-pointer hover:bg-white/[0.05] transition-all group overflow-hidden"
       >
         <div className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-          <div className="absolute top-0 right-0 w-32 h-32 blur-[60px] rounded-full" style={{ backgroundColor: color }} />
+          <div className="absolute top-0 left-0 w-32 h-32 blur-[60px] rounded-full" style={{ backgroundColor: color }} />
         </div>
         
         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg mb-6`} style={{ backgroundColor: color }}>
@@ -77,8 +77,8 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({
         <h4 className="text-xl font-black text-white leading-tight mb-2">{name}</h4>
         <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">{categorySongs.length} TRACKS</p>
         
-        <div className="absolute bottom-6 right-6 p-3 bg-white/5 rounded-xl opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
-          <ArrowRight size={16} className="text-white" />
+        <div className="absolute bottom-6 left-6 p-3 bg-white/5 rounded-xl opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0">
+          <ChevronRight size={16} className="text-white" />
         </div>
       </MotionDiv>
     );
@@ -87,16 +87,16 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({
   if (!selectedPlaylistId) {
     return (
       <div className="h-full p-10 overflow-y-auto custom-scrollbar pb-40 animate-in fade-in duration-500">
-        <div className="flex items-center justify-between mb-12" dir="rtl">
+        <div className="flex items-center justify-between mb-12">
           <div>
-            <h2 className="text-6xl font-black tracking-tighter text-white">پلی‌لیست‌ها</h2>
+            <h2 className="text-6xl font-black tracking-tighter text-white">Playlists</h2>
             <p className="text-zinc-500 text-[9px] font-black uppercase tracking-[0.4em] mt-2">Personal Audio Collections</p>
           </div>
           <button 
             onClick={onCreatePlaylist}
             className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black flex items-center gap-3 transition-all shadow-2xl hover:scale-105"
           >
-            <Plus size={20} /> پلی‌لیست هوشمند
+            <Plus size={20} /> Smart Playlist
           </button>
         </div>
 
@@ -187,15 +187,14 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({
             <div 
               key={song.id + i} onClick={() => onSongSelect(song)}
               className={`group flex items-center gap-6 px-6 py-3 rounded-2xl hover:bg-white/5 transition-all cursor-pointer ${currentSongId === song.id ? 'bg-blue-600/10' : ''}`}
-              dir="rtl"
             >
               <div className="w-6 text-[10px] font-black text-zinc-700">{i + 1}</div>
               <img src={song.coverUrl} className="w-10 h-10 rounded-xl object-cover" alt="" />
-              <div className="flex-1 text-right">
+              <div className="flex-1 text-left">
                 <h4 className={`font-bold text-sm ${currentSongId === song.id ? 'text-blue-500' : 'text-white'}`}>{song.title}</h4>
                 <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest">{song.artist}</p>
               </div>
-              <div className="text-[10px] font-mono text-zinc-600">
+              <div className="text-[10px] font-mono text-zinc-600 text-right">
                 {Math.floor(song.duration / 60)}:{(song.duration % 60).toString().padStart(2, '0')}
               </div>
             </div>

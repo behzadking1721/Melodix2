@@ -76,7 +76,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }) => {
       className="flex items-center justify-between p-5 bg-white/[0.02] rounded-[1.5rem] border border-white/5 hover:bg-white/[0.04] transition-all cursor-pointer group" 
       onClick={() => onUpdate({ ...settings, [field]: !value })}
     >
-      <div className="space-y-0.5" dir="rtl">
+      <div className="space-y-0.5">
         <p className="font-bold text-sm text-white group-hover:text-[var(--accent-color)] transition-colors">{label}</p>
         <p className="text-[10px] text-zinc-500">{description}</p>
       </div>
@@ -94,25 +94,24 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }) => {
 
   return (
     <div className="p-12 max-w-6xl space-y-16 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-40 overflow-y-auto h-full custom-scrollbar">
-      <div className="flex items-center justify-between" dir="rtl">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-5xl font-black mb-2 tracking-tighter text-white">معماری سیستم</h2>
+          <h2 className="text-5xl font-black mb-2 tracking-tighter text-white">System Settings</h2>
           <p className="text-zinc-500 font-black uppercase text-[10px] tracking-[0.4em]">Melodix Customization Lab</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Theme Engine Section */}
-        <section className="space-y-8">
-          <div className="flex items-center gap-4" dir="rtl">
+        <section className="space-y-8 text-left">
+          <div className="flex items-center gap-4">
             <Paintbrush size={20} className="text-pink-400" />
-            <h3 className="text-xs font-black uppercase tracking-[0.25em] text-zinc-400">موتور طراحی و تم</h3>
+            <h3 className="text-xs font-black uppercase tracking-[0.25em] text-zinc-400">Design & Theming</h3>
           </div>
           
           <div className="space-y-6">
-            <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[3rem] space-y-8" dir="rtl">
+            <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[3rem] space-y-8">
               <div className="flex justify-between items-center">
-                <p className="text-[11px] font-black text-zinc-500 uppercase tracking-widest">گالری تم‌های Melodix</p>
+                <p className="text-[11px] font-black text-zinc-500 uppercase tracking-widest">Melodix Theme Gallery</p>
                 <div className="flex gap-2">
                   <button onClick={() => fileInputRef.current?.click()} className="p-2 hover:bg-white/5 rounded-lg text-zinc-400" title="Import Theme">
                     <Upload size={14} />
@@ -159,16 +158,15 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }) => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   className="p-8 mica border border-blue-500/20 rounded-[3rem] space-y-8"
-                  dir="rtl"
                 >
                   <div className="flex justify-between items-center">
-                    <h4 className="text-lg font-black text-white">آزمایشگاه شخصی‌سازی</h4>
+                    <h4 className="text-lg font-black text-white">Customization Lab</h4>
                     <button onClick={() => setEditingTheme(null)} className="p-2 text-zinc-500 hover:text-white"><Trash2 size={18}/></button>
                   </div>
 
                   <div className="space-y-6">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-2">نام تم جدید</label>
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">New Theme Name</label>
                       <input 
                         value={editingTheme.name}
                         onChange={(e) => setEditingTheme({ ...editingTheme, name: e.target.value })}
@@ -178,13 +176,13 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }) => {
 
                     <div className="grid grid-cols-2 gap-4">
                        {[
-                         { label: 'پس‌زمینه اصلی', key: 'background' },
-                         { label: 'کارت‌ها و پنل‌ها', key: 'card' },
-                         { label: 'رنگ آکسنت', key: 'accent' },
-                         { label: 'متن اصلی', key: 'textPrimary' }
+                         { label: 'Background', key: 'background' },
+                         { label: 'Cards & Panels', key: 'card' },
+                         { label: 'Accent Color', key: 'accent' },
+                         { label: 'Primary Text', key: 'textPrimary' }
                        ].map(color => (
                         <div key={color.key} className="space-y-2">
-                          <label className="text-[9px] font-black text-zinc-600 mr-2">{color.label}</label>
+                          <label className="text-[9px] font-black text-zinc-600 ml-2">{color.label}</label>
                           <div className="flex items-center gap-3 bg-black/20 p-2 rounded-xl border border-white/5">
                             <input 
                               type="color" 
@@ -192,7 +190,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }) => {
                               onChange={(e) => {
                                 const newTheme = { ...editingTheme, [color.key]: e.target.value };
                                 setEditingTheme(newTheme);
-                                ThemeManager.applyTheme(newTheme); // Live preview
+                                ThemeManager.applyTheme(newTheme);
                               }}
                               className="w-8 h-8 rounded-lg bg-transparent border-none cursor-pointer"
                             />
@@ -206,30 +204,29 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }) => {
                       onClick={saveCustomTheme}
                       className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-xs flex items-center justify-center gap-3 shadow-xl shadow-blue-600/20"
                     >
-                      <Save size={16} /> ذخیره و اعمال نهایی
+                      <Save size={16} /> Save & Apply
                     </button>
                   </div>
                 </MotionDiv>
               )}
             </AnimatePresence>
 
-            <Toggle label="تجسم‌ساز فرکانس (Visualizer)" description="رندرینگ ۶۰ فریم بر ثانیه طیف صوتی." value={settings.visualizationEnabled} field="visualizationEnabled" />
-            <Toggle label="نمایش موجی (Waveform)" description="نمایش گرافیکی قله‌های صوتی در نوار پیشرفت." value={settings.waveformEnabled} field="waveformEnabled" />
+            <Toggle label="Frequency Visualizer" description="Real-time 60FPS audio spectrum rendering." value={settings.visualizationEnabled} field="visualizationEnabled" />
+            <Toggle label="Waveform Progress" description="Display audio peaks in the progress bar." value={settings.waveformEnabled} field="waveformEnabled" />
           </div>
         </section>
 
-        {/* Engine Section (Hardware & Performance) */}
-        <section className="space-y-8">
-          <div className="flex items-center gap-4" dir="rtl">
+        <section className="space-y-8 text-left">
+          <div className="flex items-center gap-4">
             <Cpu size={20} className="text-blue-400" />
-            <h3 className="text-xs font-black uppercase tracking-[0.25em] text-zinc-400">موتور پردازش و سخت‌افزار</h3>
+            <h3 className="text-xs font-black uppercase tracking-[0.25em] text-zinc-400">Engine & Hardware</h3>
           </div>
           
           <div className="space-y-6">
-            <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[3rem] space-y-6" dir="rtl">
+            <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[3rem] space-y-6">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[11px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                  <Speaker size={12}/> خروجی صدا (Hardware Interface)
+                  <Speaker size={12}/> Audio Output (Hardware)
                 </p>
                 <button 
                   onClick={refreshDevices} 
@@ -241,7 +238,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }) => {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-[9px] font-bold text-zinc-600 mr-2">انتخاب دستگاه</label>
+                  <label className="text-[9px] font-bold text-zinc-600 ml-2">Select Device</label>
                   <select 
                     value={settings.audioDevice}
                     onChange={(e) => {
@@ -257,7 +254,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }) => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[9px] font-bold text-zinc-600 mr-2">حالت خروجی (WASAPI)</label>
+                  <label className="text-[9px] font-bold text-zinc-600 ml-2">Output Mode (WASAPI)</label>
                   <div className="flex gap-2 p-1 bg-black/20 rounded-2xl">
                     <button 
                       onClick={() => {
@@ -284,9 +281,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }) => {
 
             <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[3rem] space-y-6">
               <div className="space-y-4">
-                <div className="flex justify-between text-[11px] font-black text-zinc-500 uppercase tracking-widest" dir="rtl">
-                  <span>محو شدن آهنگ (Crossfade)</span>
-                  <span className="text-[var(--accent-color)] font-mono">{settings.crossfadeSec} ثانیه</span>
+                <div className="flex justify-between text-[11px] font-black text-zinc-500 uppercase tracking-widest">
+                  <span>Crossfade Duration</span>
+                  <span className="text-[var(--accent-color)] font-mono">{settings.crossfadeSec}s</span>
                 </div>
                 <input 
                   type="range" min="0" max="10" step="1" value={settings.crossfadeSec}
@@ -296,8 +293,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }) => {
               </div>
             </div>
             
-            <Toggle label="تراز صوتی خودکار" description="استانداردسازی بلندی صدا در -14 LUFS." value={settings.autoNormalize} field="autoNormalize" />
-            <Toggle label="پخش بدون وقفه (Gapless)" description="حذف سکوت بین قطعات موسیقی." value={settings.gaplessPlayback} field="gaplessPlayback" />
+            <Toggle label="Auto Gain Normalization" description="Standardize loudness to -14 LUFS." value={settings.autoNormalize} field="autoNormalize" />
+            <Toggle label="Gapless Playback" description="Eliminate silence between tracks." value={settings.gaplessPlayback} field="gaplessPlayback" />
           </div>
         </section>
       </div>
@@ -306,20 +303,20 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }) => {
         whileHover={{ scale: 1.01 }}
         className="p-10 bg-gradient-to-br from-blue-600/10 to-purple-600/10 border border-white/10 rounded-[3rem] flex items-center gap-10 relative overflow-hidden group"
       >
-        <Database className="text-blue-500/10 absolute -right-8 -bottom-8 group-hover:scale-110 transition-transform duration-1000" size={200} />
-        <div className="space-y-6 relative z-10" dir="rtl">
+        <Database className="text-blue-500/10 absolute -left-8 -bottom-8 group-hover:scale-110 transition-transform duration-1000" size={200} />
+        <div className="space-y-6 relative z-10 text-left">
           <h4 className="text-3xl font-black text-white tracking-tighter flex items-center gap-4">
-            <ShieldCheck className="text-emerald-500" /> امنیت و ایندکس محلی
+            <ShieldCheck className="text-emerald-500" /> Security & Local Index
           </h4>
           <p className="text-sm text-zinc-400 leading-relaxed font-medium max-w-2xl">
-            تمام داده‌های متادیتای شما به‌صورت رمزنگاری شده در دیتابیس داخلی (Neural Index) ذخیره می‌شوند. Melodix هیچ‌گونه فایلی را بدون اجازه شما به سرورهای ابری منتقل نمی‌کند.
+            All your metadata is encrypted and stored in your local database (Neural Index). Melodix does not transmit any files to cloud servers without your explicit permission.
           </p>
           <div className="flex gap-4">
             <button className="px-8 py-4 bg-[var(--accent-color)] hover:opacity-90 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-3 shadow-2xl">
-              <Share2 size={16} /> پشتیبان‌گیری از تنظیمات
+              <Share2 size={16} /> Backup Settings
             </button>
             <button className="px-8 py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all">
-              پاکسازی کش
+              Clear Cache
             </button>
           </div>
         </div>

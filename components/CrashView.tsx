@@ -30,7 +30,7 @@ const CrashView: React.FC<CrashViewProps> = ({ error, onRestart }) => {
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(generateReport());
-    alert("گزارش در کلیپ‌بورد کپی شد.");
+    alert("Report copied to clipboard.");
   };
 
   const downloadReport = () => {
@@ -43,7 +43,7 @@ const CrashView: React.FC<CrashViewProps> = ({ error, onRestart }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-[#0a0a0a] flex items-center justify-center p-8 overflow-hidden" dir="rtl">
+    <div className="fixed inset-0 z-[9999] bg-[#0a0a0a] flex items-center justify-center p-8 overflow-hidden">
       <div className="absolute inset-0 opacity-20 pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-red-600/30 rounded-full blur-[150px]" />
       </div>
@@ -54,17 +54,17 @@ const CrashView: React.FC<CrashViewProps> = ({ error, onRestart }) => {
             <AlertTriangle size={48} className="text-white" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-5xl font-black text-white tracking-tighter">ملودیکس متوقف شد</h1>
-            <p className="text-zinc-500 font-bold text-lg">یک خطای بحرانی باعث شد سیستم از کار بیفتد.</p>
+            <h1 className="text-5xl font-black text-white tracking-tighter">Melodix has crashed</h1>
+            <p className="text-zinc-500 font-bold text-lg">A critical error caused the system to stop working.</p>
           </div>
         </header>
 
-        <div className="mica bg-red-600/5 border-red-600/20 p-8 rounded-[3rem] space-y-6">
+        <div className="mica bg-red-600/5 border-red-600/20 p-8 rounded-[3rem] space-y-6 text-left">
           <div className="flex items-center gap-3 text-red-500 mb-4">
             <Terminal size={20} />
             <span className="text-xs font-black uppercase tracking-widest">Stack Trace Preview</span>
           </div>
-          <div className="bg-black/40 p-6 rounded-2xl font-mono text-[11px] text-red-300/80 overflow-x-auto whitespace-pre border border-red-900/20 max-h-48 custom-scrollbar" dir="ltr">
+          <div className="bg-black/40 p-6 rounded-2xl font-mono text-[11px] text-red-300/80 overflow-x-auto whitespace-pre border border-red-900/20 max-h-48 custom-scrollbar">
             {error?.stack || error?.message || "No stack trace available."}
           </div>
         </div>
@@ -74,19 +74,19 @@ const CrashView: React.FC<CrashViewProps> = ({ error, onRestart }) => {
             onClick={onRestart}
             className="px-10 py-4 bg-white text-black rounded-2xl font-black flex items-center gap-3 hover:scale-105 transition-all shadow-2xl"
           >
-            <RefreshCcw size={18} /> راه‌اندازی مجدد ملودیکس
+            <RefreshCcw size={18} /> Restart Melodix
           </button>
           <button 
             onClick={copyToClipboard}
             className="px-8 py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-black flex items-center gap-3 border border-white/5 transition-all"
           >
-            <Copy size={18} /> کپی گزارش خطا
+            <Copy size={18} /> Copy Error Report
           </button>
           <button 
             onClick={downloadReport}
             className="px-8 py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-black flex items-center gap-3 border border-white/5 transition-all"
           >
-            <Download size={18} /> دانلود فایل JSON
+            <Download size={18} /> Download JSON Report
           </button>
         </div>
 

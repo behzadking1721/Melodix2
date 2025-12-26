@@ -58,8 +58,8 @@ const TagEditor: React.FC<TagEditorProps> = ({ song, onClose, onSave }) => {
   };
 
   const InputField = ({ label, value, field, type = "text" }: { label: string, value: any, field: keyof Song, type?: string }) => (
-    <div className="space-y-1.5" dir="rtl">
-      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-1">{label}</label>
+    <div className="space-y-1.5 text-left">
+      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">{label}</label>
       <input 
         type={type}
         value={value ?? ''}
@@ -74,14 +74,13 @@ const TagEditor: React.FC<TagEditorProps> = ({ song, onClose, onSave }) => {
       <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={onClose} />
       
       <div className="relative w-full max-w-2xl bg-[#121212] rounded-[3rem] border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300 overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header */}
         <div className="flex items-center justify-between p-8 border-b border-white/5 bg-white/[0.02]">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-2xl bg-blue-600/20 flex items-center justify-center text-blue-500 shadow-inner">
               <Edit3 size={20} />
             </div>
-            <div>
-              <h3 className="text-xl font-black text-white">ویرایشگر متادیتا</h3>
+            <div className="text-left">
+              <h3 className="text-xl font-black text-white">Metadata Editor</h3>
               <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">TagLib# Logic Integration</p>
             </div>
           </div>
@@ -90,7 +89,6 @@ const TagEditor: React.FC<TagEditorProps> = ({ song, onClose, onSave }) => {
           </button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           {error && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 text-red-400 text-xs font-bold animate-in slide-in-from-top-2">
@@ -99,42 +97,42 @@ const TagEditor: React.FC<TagEditorProps> = ({ song, onClose, onSave }) => {
           )}
 
           {previewData ? (
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500" dir="rtl">
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="p-6 bg-blue-600/10 border border-blue-500/20 rounded-[2rem] flex items-center justify-between">
-                <div>
-                  <h4 className="text-lg font-black text-white">پیش‌نمایش تغییرات هوشمند</h4>
-                  <p className="text-xs text-blue-400">اطلاعات جدید بر اساس MusicBrainz Picard استخراج شد.</p>
+                <div className="text-left">
+                  <h4 className="text-lg font-black text-white">Smart Preview Changes</h4>
+                  <p className="text-xs text-blue-400">Extracted based on MusicBrainz Picard database.</p>
                 </div>
                 <Sparkles className="text-blue-500 animate-pulse" size={32} />
               </div>
 
-              <div className="grid grid-cols-2 gap-8">
+              <div className="grid grid-cols-2 gap-8 text-left">
                 <div className="space-y-4 opacity-40 grayscale">
-                  <p className="text-[10px] font-black text-zinc-500 uppercase text-center">متادیتای فعلی</p>
+                  <p className="text-[10px] font-black text-zinc-500 uppercase text-center">Current Tags</p>
                   <div className="p-5 bg-white/5 rounded-3xl space-y-3 text-xs">
-                    <p><b>عنوان:</b> {song.title}</p>
-                    <p><b>هنرمند:</b> {song.artist}</p>
-                    <p><b>آلبوم:</b> {song.album}</p>
-                    <p><b>سال:</b> {song.year}</p>
+                    <p><b>Title:</b> {song.title}</p>
+                    <p><b>Artist:</b> {song.artist}</p>
+                    <p><b>Album:</b> {song.album}</p>
+                    <p><b>Year:</b> {song.year}</p>
                   </div>
                 </div>
                 <div className="space-y-4">
-                  <p className="text-[10px] font-black text-blue-500 uppercase text-center">پیشنهاد هوش مصنوعی</p>
+                  <p className="text-[10px] font-black text-blue-500 uppercase text-center">AI Suggestion</p>
                   <div className="p-5 bg-blue-500/10 border border-blue-500/20 rounded-3xl space-y-3 text-xs text-blue-100 shadow-2xl">
-                    <p><b>عنوان:</b> {previewData.title}</p>
-                    <p><b>هنرمند:</b> {previewData.artist}</p>
-                    <p><b>آلبوم:</b> {previewData.album}</p>
-                    <p><b>سال:</b> {previewData.year}</p>
+                    <p><b>Title:</b> {previewData.title}</p>
+                    <p><b>Artist:</b> {previewData.artist}</p>
+                    <p><b>Album:</b> {previewData.album}</p>
+                    <p><b>Year:</b> {previewData.year}</p>
                   </div>
                 </div>
               </div>
 
               <div className="flex gap-4 pt-4">
                 <button onClick={applyPreview} className="flex-1 py-4 bg-blue-600 text-white font-black rounded-2xl hover:bg-blue-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20">
-                  <Check size={18} /> تایید و جایگزینی
+                  <Check size={18} /> Confirm & Replace
                 </button>
                 <button onClick={() => setPreviewData(null)} className="flex-1 py-4 bg-white/5 text-zinc-400 font-black rounded-2xl hover:bg-white/10 transition-all">
-                  انصراف
+                  Cancel
                 </button>
               </div>
             </div>
@@ -156,26 +154,26 @@ const TagEditor: React.FC<TagEditorProps> = ({ song, onClose, onSave }) => {
                   className="w-full flex items-center justify-center gap-3 text-[10px] font-black text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90 py-4 rounded-2xl transition-all shadow-xl shadow-blue-600/20 disabled:opacity-50"
                 >
                   <Sparkles size={16} className={isFixing ? 'animate-spin' : ''} />
-                  {isFixing ? 'در حال تحلیل دیتابیس...' : 'بهینه‌سازی خودکار (Auto Fix)'}
+                  {isFixing ? 'Analyzing Database...' : 'Auto-Fix Metadata'}
                 </button>
               </div>
 
               <div className="space-y-4">
-                <InputField label="عنوان آهنگ" value={editedSong.title} field="title" />
-                <InputField label="نام هنرمند" value={editedSong.artist} field="artist" />
-                <InputField label="نام آلبوم" value={editedSong.album} field="album" />
+                <InputField label="Track Title" value={editedSong.title} field="title" />
+                <InputField label="Artist Name" value={editedSong.artist} field="artist" />
+                <InputField label="Album Name" value={editedSong.album} field="album" />
                 
                 <div className="grid grid-cols-2 gap-4">
-                  <InputField label="ژانر" value={editedSong.genre} field="genre" />
-                  <InputField label="سال انتشار" value={editedSong.year} field="year" type="number" />
+                  <InputField label="Genre" value={editedSong.genre} field="genre" />
+                  <InputField label="Release Year" value={editedSong.year} field="year" type="number" />
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
-                  <InputField label="شماره ترک" value={editedSong.trackNumber || 1} field="trackNumber" type="number" />
-                  <div className="space-y-1.5" dir="rtl">
-                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mr-1">تراز صدا (Gain)</label>
+                  <InputField label="Track No." value={editedSong.trackNumber || 1} field="trackNumber" type="number" />
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Volume Gain</label>
                     <div className="bg-black/20 border border-white/5 rounded-xl px-4 py-2.5 text-xs text-blue-400 font-mono flex items-center justify-between">
-                      {editedSong.replayGain ? `${editedSong.replayGain} dB` : 'تحلیل نشده'}
+                      {editedSong.replayGain ? `${editedSong.replayGain} dB` : 'Not Analyzed'}
                       <RefreshCcw size={12} className="opacity-40" />
                     </div>
                   </div>
@@ -185,7 +183,6 @@ const TagEditor: React.FC<TagEditorProps> = ({ song, onClose, onSave }) => {
           )}
         </div>
 
-        {/* Footer */}
         {!previewData && (
           <div className="p-8 bg-black/40 border-t border-white/5 flex gap-4">
             <button 
@@ -196,10 +193,10 @@ const TagEditor: React.FC<TagEditorProps> = ({ song, onClose, onSave }) => {
               {isSaving ? (
                 <div className="w-5 h-5 border-3 border-black/20 border-t-black rounded-full animate-spin" />
               ) : (
-                <><Save size={20} /> ذخیره در فایل (TagLib#)</>
+                <><Save size={20} /> Save to File (TagLib#)</>
               )}
             </button>
-            <button onClick={onClose} className="px-8 py-4 bg-white/5 border border-white/5 text-zinc-400 font-black rounded-2xl hover:bg-white/10 transition-all">انصراف</button>
+            <button onClick={onClose} className="px-8 py-4 bg-white/5 border border-white/5 text-zinc-400 font-black rounded-2xl hover:bg-white/10 transition-all">Cancel</button>
           </div>
         )}
       </div>
