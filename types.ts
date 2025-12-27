@@ -24,9 +24,43 @@ export enum NavigationTab {
   LyricsVisualizer = 'lyrics-visualizer'
 }
 
-/**
- * Core Song model representing local audio assets and their AI-enhanced metadata.
- */
+export interface SystemMetrics {
+  cpu: number;
+  gpu: number;
+  ram: number;
+  disk: number;
+  network: number;
+  audioLatency: number;
+}
+
+export interface AudioEngineHealth {
+  deviceId: string;
+  sampleRate: number;
+  bufferSize: number;
+  bitDepth: number;
+  dropouts: number;
+  status: 'active' | 'warming' | 'error';
+}
+
+export interface CrashReport {
+  id: string;
+  timestamp: number;
+  module: string;
+  exception: string;
+  stackTrace: string;
+  aiAnalysis: string;
+  suggestedFix: string;
+}
+
+export interface DiagnosticLog {
+  id: string;
+  timestamp: number;
+  category: 'app' | 'playback' | 'ai' | 'network' | 'extension';
+  level: 'info' | 'warn' | 'error';
+  message: string;
+  details?: string;
+}
+
 export interface Song {
   id: string;
   title: string;
@@ -42,7 +76,6 @@ export interface Song {
   playCount: number;
   lastPlayed?: number;
   lastUpdated?: number;
-  replayGain?: number;
   lrcContent?: string;
   hasLyrics?: boolean;
   tagStatus?: 'none' | 'partial' | 'full';
@@ -55,23 +88,18 @@ export interface Song {
   publisher?: string;
   isrc?: string;
   bpm?: number;
-  lyricsLanguage?: string;
   comment?: string;
+  lyricsLanguage?: string;
   tagHistory?: TagSnapshot[];
+  replayGain?: number;
 }
 
-/**
- * Snapshot for tracking metadata changes over time.
- */
 export interface TagSnapshot {
   id: string;
   timestamp: number;
   data: Partial<Song>;
 }
 
-/**
- * User-defined or system-generated collection of tracks.
- */
 export interface Playlist {
   id: string;
   name: string;
@@ -84,48 +112,90 @@ export interface Playlist {
   smartRules?: SmartRuleGroup;
 }
 
-/**
- * Logic group for high-performance library filtering.
- */
-export interface SmartRuleGroup {
-  id: string;
-  logic: 'and' | 'or';
-  rules: (SmartRule | SmartRuleGroup)[];
+export interface AISettings {
+  smartSearch: {
+    enabled: boolean;
+    fuzzyMatching: boolean;
+    semanticSearch: boolean;
+    weights: {
+      title: number;
+      artist: number;
+      genre: number;
+    };
+  };
+  recommendation: {
+    useHistory: boolean;
+    useMood: boolean;
+    strength: number;
+    threshold: number;
+    diversity: number;
+  };
+  moodDetection: {
+    analyzeWaveform: boolean;
+    analyzeLyrics: boolean;
+    categories: string[];
+  };
+  providerPriority: {
+    lyrics: string[];
+    tags: string[];
+    covers: string[];
+  };
+  privacy: {
+    localInferenceOnly: boolean;
+    anonymousUsageData: boolean;
+    cloudSyncEnabled: boolean;
+  };
 }
 
-export interface SmartRule {
-  id: string;
-  field: FilterField;
-  operator: ConditionOperator;
-  value: any;
+export interface SyncSettings {
+  autoSync: boolean;
+  syncOnExit: boolean;
+  conflictStrategy: 'smart-merge' | 'keep-local' | 'keep-cloud';
+  syncTypes: {
+    playlists: boolean;
+    settings: boolean;
+    metadata: boolean;
+    history: boolean;
+    stats: boolean;
+  };
 }
 
-export type ConditionOperator = 'is' | 'is-not' | 'contains' | 'not-contains' | 'greater' | 'less' | 'starts' | 'ends';
-
-export type FilterField = 'title' | 'artist' | 'album' | 'genre' | 'year' | 'playCount' | 'duration' | 'hasLyrics';
-
-/**
- * View models for library aggregation.
- */
-export interface ArtistViewModel {
-  name: string;
-  albums: AlbumViewModel[];
-  songCount: number;
-  coverUrl: string;
+export interface AccessibilitySettings {
+  highContrast: boolean;
+  highContrastTheme: string;
+  reduceMotion: boolean;
+  screenReaderOptimized: boolean;
+  textScale: number;
+  uiScale: number;
+  fontFamily: string;
+  colorBlindnessMode: string;
+  colorBlindnessIntensity: number;
 }
 
-export interface AlbumViewModel {
-  name: string;
-  artist: string;
-  year: number;
-  coverUrl: string;
-  songs: Song[];
-  totalDuration: number;
+export interface BackupScheduler {
+  enabled: boolean;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  time: string;
+  retentionLimit: number;
+  autoDeleteOld: boolean;
 }
 
-/**
- * Background task tracking for AI enhancements.
- */
+export interface CacheSettings {
+  maxSize: number;
+  retentionDays: number;
+  autoClean: boolean;
+}
+
+export interface EQSettings {
+  enabled: boolean;
+  mode: number;
+  bands: number[];
+  bass: number;
+  mid: number;
+  treble: number;
+  presets: Record<string, number[]>;
+}
+
 export interface DownloadTask {
   id: string;
   songId: string;
@@ -142,37 +212,20 @@ export interface DownloadTask {
 
 export type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'paused';
 
-/**
- * DSP and Audio Engine configurations.
- */
-export interface EQSettings {
-  bass: number;
-  mid: number;
-  treble: number;
-  enabled?: boolean;
-  mode?: number;
-  bands: number[];
-  presets?: Record<string, number[]>;
+export interface ArtistViewModel {
+  name: string;
+  albums: AlbumViewModel[];
+  songCount: number;
+  coverUrl: string;
 }
 
-export interface AudioEffectSettings {
-  bassBoost: number;
-  trebleBoost: number;
-  clarity: number;
-  warmth: number;
-  reverb: {
-    enabled: boolean;
-    type: 'room' | 'hall' | 'plate' | 'cathedral';
-    size: number;
-    decay: number;
-    mix: number;
-  };
-  spatial: {
-    enabled: boolean;
-    depth: number;
-    width: number;
-    mode: 'headphone' | 'speaker';
-  };
+export interface AlbumViewModel {
+  name: string;
+  artist: string;
+  year: number;
+  coverUrl: string;
+  songs: Song[];
+  totalDuration: number;
 }
 
 export enum AudioOutputMode {
@@ -180,28 +233,19 @@ export enum AudioOutputMode {
   Exclusive = 'exclusive'
 }
 
-export enum PlaylistViewMode {
-  List = 'list',
-  Grid = 'grid'
-}
+export type PlaylistViewMode = 'grid' | 'list';
 
-/**
- * Playback session state.
- */
 export interface QueueState {
   items: Song[];
   currentIndex: number;
   shuffled: boolean;
-  repeatMode: 'none' | 'one' | 'all';
+  repeatMode: 'off' | 'one' | 'all';
 }
 
-/**
- * Visual styling and atmosphere definitions.
- */
 export interface ThemeDefinition {
   id: string;
   name: string;
-  base: 'light' | 'dark';
+  base: 'dark' | 'light';
   background: string;
   surface: string;
   card: string;
@@ -213,9 +257,6 @@ export interface ThemeDefinition {
   border: string;
 }
 
-/**
- * System recovery and backup structures.
- */
 export interface BackupMetadata {
   id: string;
   timestamp: number;
@@ -255,9 +296,6 @@ export interface CloudProvider {
   storageTotal?: number;
 }
 
-/**
- * Application extensibility and middleware.
- */
 export interface MelodixExtension {
   id: string;
   name: string;
@@ -270,11 +308,8 @@ export interface MelodixExtension {
   hasSettings: boolean;
 }
 
-export type ExtensionType = 'lyrics-provider' | 'audio-effect' | 'visualization' | 'automation' | 'ui-mod' | 'tag-provider' | 'general';
+export type ExtensionType = 'lyrics-provider' | 'audio-effect' | 'visualization' | 'automation' | 'ui-mod' | 'tag-provider';
 
-/**
- * Scripting and automation.
- */
 export interface MelodixScript {
   id: string;
   name: string;
@@ -292,9 +327,6 @@ export interface AutomationRule {
   enabled: boolean;
 }
 
-/**
- * Cross-device synchronization.
- */
 export interface CloudDevice {
   id: string;
   name: string;
@@ -315,14 +347,45 @@ export interface SyncEvent {
 
 export interface SyncConflict {
   id: string;
-  type: string;
-  localValue: any;
-  remoteValue: any;
 }
 
-/**
- * Input orchestration.
- */
+export interface SmartRuleGroup {
+  id: string;
+  logic: 'and' | 'or';
+  rules: (SmartRule | SmartRuleGroup)[];
+}
+
+export interface SmartRule {
+  id: string;
+  field: FilterField;
+  operator: ConditionOperator;
+  value: any;
+}
+
+export type ConditionOperator = 'is' | 'is-not' | 'contains' | 'not-contains' | 'greater' | 'less' | 'starts' | 'ends';
+
+export type FilterField = 'title' | 'artist' | 'album' | 'genre' | 'year' | 'playCount' | 'duration' | 'hasLyrics';
+
+export interface AudioEffectSettings {
+  bassBoost: number;
+  trebleBoost: number;
+  clarity: number;
+  warmth: number;
+  reverb: {
+    enabled: boolean;
+    type: 'room' | 'hall' | 'plate' | 'cathedral';
+    size: number;
+    decay: number;
+    mix: number;
+  };
+  spatial: {
+    enabled: boolean;
+    depth: number;
+    width: number;
+    mode: 'headphone' | 'speaker';
+  };
+}
+
 export interface KeyboardShortcut {
   id: string;
   action: string;
@@ -338,96 +401,16 @@ export interface ShortcutProfile {
   isSystem: boolean;
 }
 
-/**
- * Cache and storage metrics.
- */
 export interface CacheCategoryStats {
   id: string;
   name: string;
   size: number;
   itemCount: number;
   oldestFile: number;
-  health: 'optimal' | 'bloated' | 'corrupted';
+  health: 'optimal' | 'bloated' | 'critical';
   description: string;
 }
 
-export interface CacheSettings {
-  autoPurgeEnabled: boolean;
-  purgeFrequency: 'weekly' | 'monthly';
-  maxSizeGB: number;
-  retentionDays: number;
-}
-
-/**
- * Neural Core configurations.
- */
-export interface AISettings {
-  smartSearch: {
-    enabled: boolean;
-    fuzzyMatching: boolean;
-    semanticSearch: boolean;
-    weights: { title: number; artist: number; genre: number };
-  };
-  recommendation: {
-    useHistory: boolean;
-    useMood: boolean;
-    strength: number;
-    threshold: number;
-    diversity: number;
-  };
-  moodDetection: {
-    analyzeWaveform: boolean;
-    analyzeLyrics: boolean;
-    categories: string[];
-  };
-  providerPriority: {
-    lyrics: string[];
-    tags: string[];
-    covers: string[];
-  };
-  privacy: {
-    localInferenceOnly: boolean;
-    anonymousUsageData: boolean;
-    cloudSyncEnabled: boolean;
-  };
-}
-
-export interface SyncSettings {
-  autoSync: boolean;
-  syncOnExit: boolean;
-  conflictStrategy: string;
-  syncTypes: {
-    playlists: boolean;
-    settings: boolean;
-    metadata: boolean;
-    history: boolean;
-    stats: boolean;
-  };
-}
-
-export interface AccessibilitySettings {
-  highContrast: boolean;
-  highContrastTheme: string;
-  reduceMotion: boolean;
-  screenReaderOptimized: boolean;
-  textScale: number;
-  uiScale: number;
-  fontFamily: string;
-  colorBlindnessMode: string;
-  colorBlindnessIntensity: number;
-}
-
-export interface BackupScheduler {
-  enabled: boolean;
-  frequency: 'daily' | 'weekly' | 'monthly';
-  time: string;
-  retentionLimit: number;
-  autoDeleteOld: boolean;
-}
-
-/**
- * Global application settings matrix.
- */
 export interface AppSettings {
   autoNormalize: boolean;
   gaplessPlayback: boolean;
