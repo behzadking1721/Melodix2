@@ -7,6 +7,11 @@ import CompactPlayer from './components/CompactPlayer';
 import LibraryView from './components/LibraryView';
 import HomeView from './components/HomeView';
 import PlaylistView from './components/PlaylistView';
+import NowPlayingView from './components/NowPlayingView';
+import CollectionsView from './components/CollectionsView';
+import SearchResultsView from './components/SearchResultsView';
+import DownloadsManagerView from './components/DownloadsManagerView';
+import ProfileView from './components/ProfileView'; // New
 import Equalizer from './components/Equalizer';
 import SettingsView from './components/SettingsView';
 import AboutView from './components/AboutView';
@@ -14,7 +19,7 @@ import SmartPlaylistCreator from './components/SmartPlaylistCreator';
 import SmartSearch from './components/SmartSearch';
 import TitleBar from './components/TitleBar';
 import CrashView from './components/CrashView';
-import { Song, NavigationTab, EQSettings, Playlist, AppSettings, QueueState, AudioOutputMode, ThemeDefinition } from './types';
+import { Song, NavigationTab, EQSettings, Playlist, AppSettings, QueueState, AudioOutputMode, DownloadTask } from './types';
 import { MOCK_SONGS } from './constants';
 import { AudioEngine } from './services/audioEngine';
 import { queueManager } from './services/queueManager';
@@ -32,13 +37,16 @@ const App: React.FC = () => {
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
   const [isCreatorOpen, setIsCreatorOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isReady, setIsReady] = useState(false);
+  const [isNowPlayingOpen, setIsNowPlayingOpen] = useState(false);
   const [fatalError, setFatalError] = useState<Error | null>(null);
   const [notifications, setNotifications] = useState<MelodixError[]>([]);
   
   const [songs, setSongs] = useState<Song[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [queue, setQueue] = useState<QueueState>({ items: [], currentIndex: -1, shuffled: false, repeatMode: 'all' });
+  const [tasks, setTasks] = useState<DownloadTask[]>([]);
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -48,6 +56,11 @@ const App: React.FC = () => {
   
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const engine = useMemo(() => AudioEngine.getInstance(), []);
+
+  // Sync tasks from engine
+  useEffect(() => {
+    return enhancementEngine.subscribe(setTasks);
+  }, []);
 
   // Global Crash Handler
   useEffect(() => {
@@ -142,7 +155,6 @@ const App: React.FC = () => {
         const currentSettings = savedSettings ? JSON.parse(savedSettings) : defaultSettings;
         setSettings(currentSettings);
         
-        // Dynamic Theme Application
         const allThemes = [...THEME_PRESETS, ...(currentSettings.customThemes || [])];
         const initialTheme = allThemes.find(t => t.id === currentSettings.activeThemeId) || THEME_PRESETS[0];
         ThemeManager.applyTheme(initialTheme);
@@ -158,7 +170,6 @@ const App: React.FC = () => {
     startup();
   }, []);
 
-  // Persistent Storage Sync
   useEffect(() => {
     if (!settings) return;
     localStorage.setItem('melodix-settings-v10', JSON.stringify(settings));
@@ -176,22 +187,8 @@ const App: React.FC = () => {
       engine.play(currentSong, (settings?.crossfadeSec ?? 0) > 0);
       setIsPlaying(true);
       
-      // Auto-Enhancement Trigger
       if (settings?.enableEnhancement) {
-        enhancementEngine.enhance(currentSong, (updated, msg) => {
-          setSongs(prev => prev.map(s => s.id === updated.id ? updated : s));
-          if (settings.showToasts && (msg.includes("✨") || msg.includes("🎙️") || msg.includes("🖼️"))) {
-            setNotifications(prev => [...prev, {
-              code: 'ENHANCEMENT_SUCCESS',
-              message: msg,
-              severity: ErrorSeverity.LOW,
-              category: LogCategory.AI
-            }]);
-            setTimeout(() => {
-              setNotifications(prev => prev.filter(n => n.message !== msg));
-            }, 3000);
-          }
-        });
+        enhancementEngine.enqueue(currentSong);
       }
     }
   }, [currentSong?.id]);
@@ -221,6 +218,16 @@ const App: React.FC = () => {
     setIsPlaying(!isPlaying);
   };
 
+  const handleSearch = (q: string) => {
+    setSearchQuery(q);
+    if (q) {
+      setActiveTab(NavigationTab.Search);
+      setSelectedPlaylistId(null);
+    } else {
+      setActiveTab(NavigationTab.Home);
+    }
+  };
+
   if (fatalError) return <CrashView error={fatalError} onRestart={() => window.location.reload()} />;
 
   if (!isReady || !settings) {
@@ -239,7 +246,11 @@ const App: React.FC = () => {
       <TitleBar onOpenSearch={() => setIsSearchOpen(true)} />
       <Sidebar 
         activeTab={activeTab} 
-        onTabChange={setActiveTab} 
+        onTabChange={(tab) => { 
+          setActiveTab(tab); 
+          setSelectedPlaylistId(null);
+          if (tab !== NavigationTab.Search) setSearchQuery('');
+        }} 
         playlists={playlists}
         activePlaylistId={selectedPlaylistId}
         onSelectPlaylist={(id) => { setActiveTab(NavigationTab.Playlists); setSelectedPlaylistId(id); }}
@@ -248,7 +259,7 @@ const App: React.FC = () => {
       <MotionMain layout className={`flex-1 h-full relative overflow-hidden pt-10 ${settings.enableAnimations ? '' : 'no-animation'}`}>
         <AnimatePresence mode="wait">
           <MotionDiv
-            key={activeTab + (selectedPlaylistId || '')}
+            key={activeTab + (selectedPlaylistId || '') + searchQuery}
             initial={settings.enableAnimations ? { opacity: 0 } : false}
             animate={{ opacity: 1 }}
             exit={settings.enableAnimations ? { opacity: 0 } : false}
@@ -266,6 +277,28 @@ const App: React.FC = () => {
                 isPlaying={isPlaying}
                 onTogglePlay={handleTogglePlay}
               />
+            )}
+            {activeTab === NavigationTab.Profile && <ProfileView songs={songs} />}
+            {activeTab === NavigationTab.Collections && (
+              <CollectionsView 
+                songs={songs} 
+                onSongSelect={(s) => queueManager.setQueue([s], 0)} 
+                currentSongId={currentSong?.id}
+                onPlayPlaylist={(songsList, title) => queueManager.setQueue(songsList, 0)}
+              />
+            )}
+            {activeTab === NavigationTab.Search && (
+              <SearchResultsView 
+                query={searchQuery}
+                songs={songs}
+                playlists={playlists}
+                onSongSelect={(s) => queueManager.setQueue([s], 0)}
+                currentSongId={currentSong?.id}
+                onClear={() => { setSearchQuery(''); setActiveTab(NavigationTab.Home); }}
+              />
+            )}
+            {activeTab === NavigationTab.Downloads && (
+              <DownloadsManagerView tasks={tasks} />
             )}
             {activeTab === NavigationTab.AllSongs && <LibraryView songs={songs} onSongSelect={(s) => queueManager.setQueue([s], 0)} onAddNext={(s) => queueManager.addNext(s)} onAddToQueue={(s) => queueManager.addToEnd(s)} currentSongId={currentSong?.id} onUpdateSong={(s) => setSongs(prev => prev.map(o => o.id === s.id ? s : o))} />}
             {activeTab === NavigationTab.Playlists && (
@@ -288,27 +321,22 @@ const App: React.FC = () => {
           </MotionDiv>
         </AnimatePresence>
 
-        <div className="fixed bottom-28 left-10 z-[500] space-y-3 pointer-events-none">
-          <AnimatePresence>
-            {notifications.map((n, i) => (
-              <MotionDiv
-                key={i}
-                initial={{ opacity: 0, x: -50, scale: 0.9 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className={`p-5 rounded-2xl flex items-center gap-4 border shadow-2xl pointer-events-auto mica ${n.code === 'ENHANCEMENT_SUCCESS' ? 'border-emerald-500/20 bg-emerald-500/5' : n.severity === ErrorSeverity.LOW ? 'border-zinc-800' : 'border-red-600/20 bg-red-600/5'}`}
-              >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${n.code === 'ENHANCEMENT_SUCCESS' ? 'bg-emerald-600 text-white' : n.severity === ErrorSeverity.LOW ? 'bg-zinc-800 text-zinc-400' : 'bg-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.3)]'}`}>
-                  {n.code === 'ENHANCEMENT_SUCCESS' ? <Sparkles size={20} /> : <AlertCircle size={20} />}
-                </div>
-                <div className="flex-1 min-w-[200px]">
-                  <p className="text-xs font-bold text-white">{n.message}</p>
-                  <p className="text-[10px] text-zinc-500 font-black uppercase mt-1 tracking-widest">{n.code}</p>
-                </div>
-              </MotionDiv>
-            ))}
-          </AnimatePresence>
-        </div>
+        <AnimatePresence>
+          {isNowPlayingOpen && (
+            <NowPlayingView 
+              currentSong={currentSong} 
+              isPlaying={isPlaying} 
+              progress={progress} 
+              duration={currentSong?.duration || 0} 
+              onTogglePlay={handleTogglePlay} 
+              onNext={() => queueManager.next()} 
+              onPrev={() => queueManager.prev()} 
+              onSeek={(val) => engine.seek(val)} 
+              onBack={() => setIsNowPlayingOpen(false)}
+              onUpdateSong={(s) => setSongs(prev => prev.map(o => o.id === s.id ? s : o))}
+            />
+          )}
+        </AnimatePresence>
       </MotionMain>
 
       <CompactPlayer 
@@ -320,7 +348,7 @@ const App: React.FC = () => {
         progress={progress}
         duration={currentSong?.duration || 0}
         onSeek={(val) => engine.seek(val)}
-        onShowLyrics={() => setActiveTab(NavigationTab.Home)}
+        onShowLyrics={() => setIsNowPlayingOpen(true)}
       />
       
       <Equalizer settings={eqSettings} onChange={(s) => { setEqSettings(s); engine.setEQ(s); }} isOpen={isEqOpen} onClose={() => setIsEqOpen(false)} />
@@ -331,7 +359,11 @@ const App: React.FC = () => {
         onClose={() => setIsSearchOpen(false)} 
         songs={songs} 
         currentSong={currentSong}
-        onSongSelect={(s) => queueManager.setQueue([s], 0)} 
+        onSongSelect={(s) => {
+          queueManager.setQueue([s], 0);
+          setIsSearchOpen(false);
+        }} 
+        onSeeAll={handleSearch}
       />
     </div>
   );

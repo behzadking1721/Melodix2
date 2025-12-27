@@ -33,8 +33,6 @@ export class AudioEngine {
   }
 
   private initContext() {
-    // In Native apps, we would use new AudioContext({ latencyHint: 'interactive' }) for Shared
-    // and specific sample rates for Exclusive.
     this.context = new (window.AudioContext || (window as any).webkitAudioContext)({
       latencyHint: 'interactive',
     });
@@ -90,60 +88,31 @@ export class AudioEngine {
     return AudioEngine.instance;
   }
 
-  /**
-   * Switches the physical output device seamlessly.
-   * Simulation of WASAPI Device Initialization.
-   */
   public async setOutputDevice(deviceId: string, mode: AudioOutputMode = AudioOutputMode.Shared) {
     try {
       this.currentDeviceId = deviceId;
       this.currentMode = mode;
-
-      logger.log(LogLevel.INFO, LogCategory.AUDIO, `Switching to device: ${deviceId} (Mode: ${mode})`);
-
-      // 1. Update elements sinkId (Browser-specific hardware routing)
       for (const channel of this.channels) {
         if ((channel.element as any).setSinkId) {
-          try {
-            await (channel.element as any).setSinkId(deviceId);
-          } catch (err: any) {
-            if (err.name === 'SecurityError') {
-              throw new Error("دسترسی به دستگاه خروجی توسط سیستم امنیتی مسدود شده است.");
-            }
-            throw err;
-          }
+          await (channel.element as any).setSinkId(deviceId);
         }
       }
-
-      // 2. Handle WASAPI Exclusive Simulation
-      // In a native bridge, we would re-open the stream with a specific buffer size.
-      // Here, we log the intent and ensure the context is active.
-      if (mode === AudioOutputMode.Exclusive) {
-        logger.log(LogLevel.WARN, LogCategory.AUDIO, "Exclusive Mode requested: Attempting low-latency synchronization.");
-        // In actual WASAPI Exclusive, we would lock the sample rate.
-      }
-
       return true;
     } catch (e) {
       errorService.handleError(e, "Output Device Switch", LogCategory.AUDIO, ErrorSeverity.MEDIUM);
-      // Fallback to default
-      if (deviceId !== 'default') await this.setOutputDevice('default', AudioOutputMode.Shared);
       return false;
     }
   }
 
   public async getWaveformData(url: string, bars: number = 100): Promise<number[]> {
     if (this.waveformCache.has(url)) return this.waveformCache.get(url)!;
-
     try {
       const response = await fetch(url);
       const arrayBuffer = await response.arrayBuffer();
       const audioBuffer = await this.context.decodeAudioData(arrayBuffer);
-      
       const channelData = audioBuffer.getChannelData(0);
       const samplesPerBar = Math.floor(channelData.length / bars);
       const peaks: number[] = [];
-
       for (let i = 0; i < bars; i++) {
         let max = 0;
         for (let j = 0; j < samplesPerBar; j++) {
@@ -152,7 +121,6 @@ export class AudioEngine {
         }
         peaks.push(max);
       }
-
       this.waveformCache.set(url, peaks);
       return peaks;
     } catch (e) {
@@ -184,7 +152,6 @@ export class AudioEngine {
       const now = this.context.currentTime;
       current.gain.gain.linearRampToValueAtTime(0, now + this.crossfadeDuration);
       next.gain.gain.linearRampToValueAtTime(volumeLevel, now + this.crossfadeDuration);
-      
       next.element.play();
       setTimeout(() => {
         current.element.pause();
@@ -195,6 +162,10 @@ export class AudioEngine {
       next.element.play();
       current.element.pause();
     }
+
+    // Update playback metadata
+    song.lastPlayed = Date.now();
+    song.playCount = (song.playCount || 0) + 1;
 
     this.activeChannelIndex = nextIndex;
   }

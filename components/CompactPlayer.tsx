@@ -64,7 +64,7 @@ const CompactPlayer: React.FC<CompactPlayerProps> = ({
       <div className="flex-1 flex items-center px-6 gap-6">
         
         {/* Left: Metadata */}
-        <div className="flex items-center gap-4 w-1/4 min-w-[200px]">
+        <div className="flex items-center gap-4 w-1/4 min-w-[200px] cursor-pointer" onClick={onShowLyrics}>
           <div className="relative w-10 h-10 shrink-0 group">
             <AnimatePresence mode="wait">
               <motion.img 
@@ -76,12 +76,6 @@ const CompactPlayer: React.FC<CompactPlayerProps> = ({
                 className="w-full h-full rounded-lg object-cover shadow-lg border border-white/10"
               />
             </AnimatePresence>
-            <button 
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-lg"
-            >
-              {isExpanded ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-            </button>
           </div>
           
           <div className="min-w-0 flex-1">

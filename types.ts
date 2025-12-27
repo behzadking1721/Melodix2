@@ -13,6 +13,8 @@ export interface Song {
   isFavorite: boolean;
   dateAdded: number;
   playCount: number;
+  lastPlayed?: number;
+  lastUpdated?: number;
   isSynced?: boolean;
   hasLyrics?: boolean;
   lrcContent?: string;
@@ -37,6 +39,23 @@ export interface ArtistViewModel {
   albums: AlbumViewModel[];
   songCount: number;
   coverUrl: string;
+}
+
+export type TaskType = 'lyrics' | 'tags' | 'cover' | 'full-enhancement';
+export type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'paused';
+
+export interface DownloadTask {
+  id: string;
+  songId: string;
+  songTitle: string;
+  artist: string;
+  coverUrl: string;
+  type: TaskType;
+  status: TaskStatus;
+  progress: number;
+  error?: string;
+  retryCount: number;
+  timestamp: number;
 }
 
 export interface Playlist {
@@ -83,14 +102,11 @@ export interface ThemeDefinition {
 }
 
 export interface AppSettings {
-  // General
   language: 'en' | 'fa';
   launchOnBoot: boolean;
   launchMinimized: boolean;
   defaultPage: string;
   showToasts: boolean;
-  
-  // Theme & Appearance
   themeMode: 'auto' | 'light' | 'dark' | 'custom';
   activeThemeId: string;
   customThemes: ThemeDefinition[];
@@ -101,8 +117,6 @@ export interface AppSettings {
   miniMode: boolean;
   miniProgress: boolean;
   miniCover: boolean;
-
-  // Audio
   gaplessPlayback: boolean;
   crossfadeSec: number;
   autoNormalize: boolean;
@@ -110,15 +124,11 @@ export interface AppSettings {
   audioDevice: string;
   audioOutputMode: AudioOutputMode;
   targetSampleRate: number;
-  
-  // Library
   musicFolders: string[];
   autoRescan: boolean;
   preferEmbeddedTags: boolean;
   detectDuplicates: boolean;
   groupByAlbumArtist: boolean;
-
-  // Lyrics & Tags
   lyricsProvider: 'musixmatch' | 'gemini' | 'lrc';
   autoSaveLyrics: boolean;
   preferSyncedLrc: boolean;
@@ -126,16 +136,12 @@ export interface AppSettings {
   hdCoverArt: boolean;
   replaceLowQualCover: boolean;
   saveInsideFile: boolean;
-
-  // Auto-Enhancement
   enableEnhancement: boolean;
   autoFixTags: boolean;
   autoFetchLyrics: boolean;
   autoUpdateCover: boolean;
   showStatusIcons: boolean;
   taskScheduling: 'playback' | 'idle' | 'manual';
-
-  // Advanced & Hardware
   alwaysOnTop: boolean;
   visualizationEnabled: boolean;
   waveformEnabled: boolean;
@@ -144,17 +150,17 @@ export interface AppSettings {
   minDurationSec: number;
 }
 
+export type PlaylistViewMode = 'grid' | 'list';
+
 export enum NavigationTab {
   Home = 'main',
+  Collections = 'collections',
   Playlists = 'playlist',
   AllSongs = 'musics',
+  Search = 'search',
   Queue = 'queue',
+  Downloads = 'downloads',
+  Profile = 'profile', // New
   Settings = 'settings',
   About = 'about'
-}
-
-export enum PlaylistViewMode {
-  Grid = 'grid',
-  List = 'list',
-  Detailed = 'detailed'
 }
