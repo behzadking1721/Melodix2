@@ -23,10 +23,14 @@ const PRESETS: Record<string, number[]> = {
 };
 
 const AudioEffectsView: React.FC = () => {
+  // Added bass, mid, and treble properties to initialize EQSettings correctly and resolve the TypeScript error
   const [eq, setEq] = useState<EQSettings>({
     enabled: true,
     mode: 10,
     bands: new Array(10).fill(0),
+    bass: 0,
+    mid: 0,
+    treble: 0,
     presets: PRESETS
   });
 

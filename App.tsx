@@ -19,7 +19,7 @@ import AISettingsView from './components/AISettingsView';
 import DeveloperView from './components/DeveloperView';
 import MultiDeviceSyncView from './components/MultiDeviceSyncView';
 import AudioEffectsView from './components/AudioEffectsView';
-import VisualizerView from './components/VisualizerView'; // New
+import VisualizerView from './components/VisualizerView';
 import Equalizer from './components/Equalizer';
 import SettingsView from './components/SettingsView';
 import AboutView from './components/AboutView';
@@ -98,7 +98,77 @@ const App: React.FC = () => {
           providerPriority: { lyrics: ['Gemini', 'Musixmatch', 'Local'], tags: ['MusicBrainz', 'Gemini', 'Discogs'], covers: ['Official', 'Gemini', 'Fanart.tv'] }
         };
 
-        const currentSettings = savedSettings ? JSON.parse(savedSettings) : { themeMode: 'dark', activeThemeId: 'classic-dark', ai: defaultAI, sync: { enabled: false } };
+        const defaultSettings: AppSettings = {
+          language: 'en',
+          themeMode: 'dark',
+          activeThemeId: 'classic-dark',
+          uiDensity: 'comfortable',
+          enableBlur: true,
+          enableAnimations: true,
+          miniMode: false,
+          miniProgress: true,
+          miniCover: true,
+          defaultPage: NavigationTab.Home,
+          launchOnBoot: false,
+          launchMinimized: false,
+          showToasts: true,
+          audioDevice: 'default',
+          audioOutputMode: AudioOutputMode.Shared,
+          autoNormalize: true,
+          gaplessPlayback: true,
+          crossfadeSec: 3,
+          targetSampleRate: 44100,
+          musicFolders: [],
+          autoRescan: true,
+          preferEmbeddedTags: true,
+          detectDuplicates: true,
+          groupByAlbumArtist: true,
+          lyricsProvider: 'gemini',
+          tagProvider: 'musicbrainz',
+          autoSaveLyrics: true,
+          preferSyncedLrc: true,
+          saveInsideFile: false,
+          hdCoverArt: true,
+          enableEnhancement: true,
+          autoFixTags: true,
+          autoFetchLyrics: true,
+          autoUpdateCover: true,
+          showStatusIcons: true,
+          taskScheduling: 'playback',
+          ai: defaultAI,
+          sync: {
+            enabled: false,
+            autoSync: true,
+            syncOnExit: false,
+            conflictStrategy: 'smart-merge',
+            syncTypes: {
+              playlists: true,
+              settings: true,
+              metadata: true,
+              history: true,
+              stats: true
+            }
+          }
+        };
+
+        // Recursive merge function to handle deep objects like settings.sync or settings.ai
+        const deepMerge = (target: any, source: any) => {
+          for (const key of Object.keys(source)) {
+            if (source[key] instanceof Object && key in target) {
+              Object.assign(source[key], deepMerge(target[key], source[key]));
+            }
+          }
+          Object.assign(target || {}, source);
+          return target;
+        };
+
+        const parsedSaved = savedSettings ? JSON.parse(savedSettings) : {};
+        const currentSettings = { ...defaultSettings, ...parsedSaved };
+        
+        // Ensure sub-objects are also merged correctly
+        currentSettings.sync = { ...defaultSettings.sync, ...(parsedSaved.sync || {}) };
+        currentSettings.ai = { ...defaultSettings.ai, ...(parsedSaved.ai || {}) };
+        
         setSettings(currentSettings);
         
         const allThemes = [...THEME_PRESETS, ...(currentSettings.customThemes || [])];
