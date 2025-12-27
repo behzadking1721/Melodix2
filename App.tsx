@@ -12,7 +12,8 @@ import CollectionsView from './components/CollectionsView';
 import SearchResultsView from './components/SearchResultsView';
 import DownloadsManagerView from './components/DownloadsManagerView';
 import ProfileView from './components/ProfileView';
-import BackupRestoreView from './components/BackupRestoreView'; // New
+import BackupRestoreView from './components/BackupRestoreView';
+import DiagnosticsView from './components/DiagnosticsView'; // New
 import Equalizer from './components/Equalizer';
 import SettingsView from './components/SettingsView';
 import AboutView from './components/AboutView';
@@ -283,6 +284,12 @@ const App: React.FC = () => {
             )}
             {activeTab === NavigationTab.Profile && <ProfileView songs={songs} />}
             {activeTab === NavigationTab.Backup && <BackupRestoreView />}
+            {activeTab === NavigationTab.Diagnostics && (
+              <DiagnosticsView 
+                currentSong={currentSong} 
+                tasksCount={tasks.filter(t => t.status === 'processing').length} 
+              />
+            )}
             {activeTab === NavigationTab.Collections && (
               <CollectionsView 
                 songs={songs} 

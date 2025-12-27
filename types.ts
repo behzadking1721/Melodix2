@@ -182,7 +182,8 @@ export enum NavigationTab {
   Queue = 'queue',
   Downloads = 'downloads',
   Profile = 'profile',
-  Backup = 'backup', // New
+  Backup = 'backup',
+  Diagnostics = 'diagnostics', // New
   Settings = 'settings',
   About = 'about'
 }

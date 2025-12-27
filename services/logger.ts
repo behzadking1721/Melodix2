@@ -1,7 +1,7 @@
 
 /**
- * Melodix Enterprise Logger - v8.0
- * Inspired by Serilog for structured logging and performance profiling.
+ * Melodix Enterprise Logger - v8.1
+ * Updated for reactive diagnostics integration.
  */
 
 import { cacheItem } from "./dbService";
@@ -24,7 +24,7 @@ export enum LogCategory {
   SYSTEM = 'System'
 }
 
-interface LogEntry {
+export interface LogEntry {
   timestamp: string;
   level: LogLevel;
   category: LogCategory;
@@ -33,17 +33,25 @@ interface LogEntry {
   elapsedMs?: number;
 }
 
+type LogObserver = (entry: LogEntry) => void;
+
 class MelodixLogger {
   private static instance: MelodixLogger;
   private logs: LogEntry[] = [];
-  private readonly MAX_LOGS = 1000;
+  private readonly MAX_LOGS = 2000;
   private timers: Map<string, number> = new Map();
+  private observers: Set<LogObserver> = new Set();
 
   private constructor() {}
 
   public static getInstance(): MelodixLogger {
     if (!MelodixLogger.instance) MelodixLogger.instance = new MelodixLogger();
     return MelodixLogger.instance;
+  }
+
+  public subscribe(observer: LogObserver) {
+    this.observers.add(observer);
+    return () => this.observers.delete(observer);
   }
 
   public log(level: LogLevel, category: LogCategory, message: string, context?: any, elapsedMs?: number) {
@@ -56,7 +64,7 @@ class MelodixLogger {
       elapsedMs
     };
 
-    // Console Output with Color Formatting
+    // Console Output
     const color = this.getColor(level);
     console.log(
       `%c[${entry.timestamp}] [${LogCategory[category]}] [${LogLevel[level]}]: ${message} ${elapsedMs ? `(${elapsedMs}ms)` : ''}`,
@@ -64,11 +72,12 @@ class MelodixLogger {
     );
 
     this.logs.push(entry);
-    
-    // Rolling memory limit
     if (this.logs.length > this.MAX_LOGS) this.logs.shift();
 
-    // Async persistence to DB (Simulation of Rolling File)
+    // Notify observers
+    this.observers.forEach(obs => obs(entry));
+
+    // Persistent storage
     if (level >= LogLevel.INFO) {
       cacheItem('logs', entry.timestamp, entry).catch(() => {});
     }
@@ -101,6 +110,11 @@ class MelodixLogger {
   }
 
   public getLogs(): LogEntry[] { return [...this.logs]; }
+  
+  public clear() {
+    this.logs = [];
+    this.log(LogLevel.INFO, LogCategory.SYSTEM, "Memory logs cleared by user.");
+  }
 }
 
 export const logger = MelodixLogger.getInstance();
