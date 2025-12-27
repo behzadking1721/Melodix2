@@ -18,7 +18,6 @@ export interface Song {
   lrcContent?: string;
   replayGain?: number;
   bpm?: number;
-  // Enhancement Status Indicators
   tagStatus?: 'none' | 'partial' | 'full';
   lyricsStatus?: 'none' | 'partial' | 'full';
   coverStatus?: 'none' | 'partial' | 'full';
@@ -84,25 +83,65 @@ export interface ThemeDefinition {
 }
 
 export interface AppSettings {
-  minFileSizeMB: number;
-  minDurationSec: number;
+  // General
+  language: 'en' | 'fa';
   launchOnBoot: boolean;
-  isDefaultPlayer: boolean;
-  alwaysOnTop: boolean;
+  launchMinimized: boolean;
+  defaultPage: string;
+  showToasts: boolean;
+  
+  // Theme & Appearance
   themeMode: 'auto' | 'light' | 'dark' | 'custom';
   activeThemeId: string;
   customThemes: ThemeDefinition[];
-  floatingLyrics: boolean;
   accentColor: string;
+  uiDensity: 'comfortable' | 'compact';
+  enableAnimations: boolean;
+  enableBlur: boolean;
+  miniMode: boolean;
+  miniProgress: boolean;
+  miniCover: boolean;
+
+  // Audio
+  gaplessPlayback: boolean;
   crossfadeSec: number;
   autoNormalize: boolean;
-  visualizationEnabled: boolean;
-  waveformEnabled: boolean;
-  miniMode: boolean;
-  gaplessPlayback: boolean;
+  highQualityMode: boolean;
   audioDevice: string;
   audioOutputMode: AudioOutputMode;
   targetSampleRate: number;
+  
+  // Library
+  musicFolders: string[];
+  autoRescan: boolean;
+  preferEmbeddedTags: boolean;
+  detectDuplicates: boolean;
+  groupByAlbumArtist: boolean;
+
+  // Lyrics & Tags
+  lyricsProvider: 'musixmatch' | 'gemini' | 'lrc';
+  autoSaveLyrics: boolean;
+  preferSyncedLrc: boolean;
+  tagProvider: 'musicbrainz' | 'gemini' | 'discogs';
+  hdCoverArt: boolean;
+  replaceLowQualCover: boolean;
+  saveInsideFile: boolean;
+
+  // Auto-Enhancement
+  enableEnhancement: boolean;
+  autoFixTags: boolean;
+  autoFetchLyrics: boolean;
+  autoUpdateCover: boolean;
+  showStatusIcons: boolean;
+  taskScheduling: 'playback' | 'idle' | 'manual';
+
+  // Advanced & Hardware
+  alwaysOnTop: boolean;
+  visualizationEnabled: boolean;
+  waveformEnabled: boolean;
+  isDefaultPlayer: boolean;
+  minFileSizeMB: number;
+  minDurationSec: number;
 }
 
 export enum NavigationTab {

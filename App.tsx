@@ -91,12 +91,52 @@ const App: React.FC = () => {
         setPlaylists(savedPlaylists ? JSON.parse(savedPlaylists) : []);
         
         const defaultSettings: AppSettings = {
-          minFileSizeMB: 2, minDurationSec: 30, launchOnBoot: false, isDefaultPlayer: true,
-          alwaysOnTop: false, themeMode: 'dark', activeThemeId: 'classic-dark', customThemes: [], 
-          floatingLyrics: false, accentColor: '#3b82f6',
-          crossfadeSec: 5, autoNormalize: true, visualizationEnabled: true, waveformEnabled: true,
-          miniMode: false, gaplessPlayback: true, audioDevice: 'default',
-          audioOutputMode: AudioOutputMode.Shared, targetSampleRate: 44100
+          language: 'en',
+          launchOnBoot: false,
+          launchMinimized: false,
+          defaultPage: 'main',
+          showToasts: true,
+          themeMode: 'dark',
+          activeThemeId: 'classic-dark',
+          customThemes: [],
+          accentColor: '#3b82f6',
+          uiDensity: 'comfortable',
+          enableAnimations: true,
+          enableBlur: true,
+          miniMode: false,
+          miniProgress: true,
+          miniCover: true,
+          gaplessPlayback: true,
+          crossfadeSec: 3,
+          autoNormalize: true,
+          highQualityMode: true,
+          audioDevice: 'default',
+          audioOutputMode: AudioOutputMode.Shared,
+          targetSampleRate: 44100,
+          musicFolders: ['C:\\Users\\Default\\Music'],
+          autoRescan: true,
+          preferEmbeddedTags: true,
+          detectDuplicates: true,
+          groupByAlbumArtist: true,
+          lyricsProvider: 'gemini',
+          autoSaveLyrics: true,
+          preferSyncedLrc: true,
+          tagProvider: 'gemini',
+          hdCoverArt: true,
+          replaceLowQualCover: true,
+          saveInsideFile: false,
+          enableEnhancement: true,
+          autoFixTags: true,
+          autoFetchLyrics: true,
+          autoUpdateCover: true,
+          showStatusIcons: true,
+          taskScheduling: 'playback',
+          alwaysOnTop: false,
+          visualizationEnabled: true,
+          waveformEnabled: true,
+          isDefaultPlayer: true,
+          minFileSizeMB: 2,
+          minDurationSec: 30
         };
 
         const currentSettings = savedSettings ? JSON.parse(savedSettings) : defaultSettings;
@@ -137,34 +177,31 @@ const App: React.FC = () => {
       setIsPlaying(true);
       
       // Auto-Enhancement Trigger
-      enhancementEngine.enhance(currentSong, (updated, msg) => {
-        // Update local state and DB
-        setSongs(prev => prev.map(s => s.id === updated.id ? updated : s));
-        
-        // Show non-intrusive notification for AI successes
-        if (msg.includes("✨") || msg.includes("🎙️") || msg.includes("🖼️")) {
-          setNotifications(prev => [...prev, {
-            code: 'ENHANCEMENT_SUCCESS',
-            message: msg,
-            severity: ErrorSeverity.LOW,
-            category: LogCategory.AI
-          }]);
-          setTimeout(() => {
-            setNotifications(prev => prev.filter(n => n.message !== msg));
-          }, 3000);
-        }
-      });
+      if (settings?.enableEnhancement) {
+        enhancementEngine.enhance(currentSong, (updated, msg) => {
+          setSongs(prev => prev.map(s => s.id === updated.id ? updated : s));
+          if (settings.showToasts && (msg.includes("✨") || msg.includes("🎙️") || msg.includes("🖼️"))) {
+            setNotifications(prev => [...prev, {
+              code: 'ENHANCEMENT_SUCCESS',
+              message: msg,
+              severity: ErrorSeverity.LOW,
+              category: LogCategory.AI
+            }]);
+            setTimeout(() => {
+              setNotifications(prev => prev.filter(n => n.message !== msg));
+            }, 3000);
+          }
+        });
+      }
     }
   }, [currentSong?.id]);
 
-  // Persistent Library Sync
   useEffect(() => {
     if (songs.length > 0) {
       localStorage.setItem('melodix-library-v10', JSON.stringify(songs));
     }
   }, [songs]);
 
-  // Audio state sync
   useEffect(() => {
     const el = engine.getActiveElement();
     const update = () => setProgress(el.currentTime);
@@ -198,7 +235,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[var(--mica-bg)]" dir="ltr">
+    <div className={`flex h-screen w-screen overflow-hidden bg-[var(--mica-bg)] ${settings.enableBlur ? 'backdrop-blur-xl' : ''}`} dir="ltr">
       <TitleBar onOpenSearch={() => setIsSearchOpen(true)} />
       <Sidebar 
         activeTab={activeTab} 
@@ -208,13 +245,13 @@ const App: React.FC = () => {
         onSelectPlaylist={(id) => { setActiveTab(NavigationTab.Playlists); setSelectedPlaylistId(id); }}
       />
 
-      <MotionMain layout className="flex-1 h-full relative overflow-hidden pt-10">
+      <MotionMain layout className={`flex-1 h-full relative overflow-hidden pt-10 ${settings.enableAnimations ? '' : 'no-animation'}`}>
         <AnimatePresence mode="wait">
           <MotionDiv
             key={activeTab + (selectedPlaylistId || '')}
-            initial={{ opacity: 0 }}
+            initial={settings.enableAnimations ? { opacity: 0 } : false}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            exit={settings.enableAnimations ? { opacity: 0 } : false}
             className="h-full"
           >
             {activeTab === NavigationTab.Home && (
