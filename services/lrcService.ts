@@ -1,7 +1,7 @@
 
 /**
- * Melodix LRC Engine - Stage 3
- * Handles parsing and timing of synchronized lyrics.
+ * Melodix LRC Engine - Stage 22 (Advanced)
+ * Handles parsing, timing, and generation of synchronized lyrics.
  */
 
 export interface LrcLine {
@@ -12,7 +12,6 @@ export interface LrcLine {
 export const LrcParser = {
   /**
    * Parses a raw string (LRC format) into a structured array of timed lines.
-   * Supports [mm:ss], [mm:ss.xx], and [mm:ss:xx] formats.
    */
   parse: (raw: string): LrcLine[] => {
     if (!raw) return [];
@@ -23,10 +22,7 @@ export const LrcParser = {
 
     lines.forEach(line => {
       let match;
-      // An LRC line can have multiple timestamps for the same text
       const text = line.replace(timeRegex, '').trim();
-      
-      // Reset regex index for multiple matches in the same line
       timeRegex.lastIndex = 0;
       
       while ((match = timeRegex.exec(line)) !== null) {
@@ -34,14 +30,35 @@ export const LrcParser = {
         const seconds = parseFloat(match[2]);
         const time = minutes * 60 + seconds;
         
-        if (text) {
+        if (text || line.includes(']')) { // Keep empty lines if they have timestamps
           result.push({ time, text });
         }
       }
     });
 
-    // Sort by time as LRC files sometimes have out-of-order tags
     return result.sort((a, b) => a.time - b.time);
+  },
+
+  /**
+   * Converts a structured array back into a standard LRC string.
+   */
+  stringify: (lines: LrcLine[]): string => {
+    return lines
+      .map(line => {
+        const mins = Math.floor(line.time / 60).toString().padStart(2, '0');
+        const secs = (line.time % 60).toFixed(2).padStart(5, '0');
+        return `[${mins}:${secs}]${line.text}`;
+      })
+      .join('\n');
+  },
+
+  /**
+   * Formats seconds into mm:ss.xx
+   */
+  formatTimestamp: (seconds: number): string => {
+    const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const secs = (seconds % 60).toFixed(2).padStart(5, '0');
+    return `${mins}:${secs}`;
   },
 
   /**
