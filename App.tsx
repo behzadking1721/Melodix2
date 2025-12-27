@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, AlertCircle, X } from 'lucide-react';
+import { Zap, AlertCircle, X, Sparkles } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import CompactPlayer from './components/CompactPlayer';
 import LibraryView from './components/LibraryView';
@@ -18,10 +18,11 @@ import { Song, NavigationTab, EQSettings, Playlist, AppSettings, QueueState, Aud
 import { MOCK_SONGS } from './constants';
 import { AudioEngine } from './services/audioEngine';
 import { queueManager } from './services/queueManager';
-import { initDB } from './services/dbService';
+import { initDB, cacheItem } from './services/dbService';
 import { logger, LogLevel, LogCategory } from './services/logger';
 import { errorService, MelodixError, ErrorSeverity } from './services/errorService';
 import { THEME_PRESETS, ThemeManager } from './services/themeManager';
+import { enhancementEngine } from './services/enhancementEngine';
 
 const MotionMain = motion.main as any;
 const MotionDiv = motion.div as any;
@@ -134,8 +135,34 @@ const App: React.FC = () => {
     if (currentSong) {
       engine.play(currentSong, (settings?.crossfadeSec ?? 0) > 0);
       setIsPlaying(true);
+      
+      // Auto-Enhancement Trigger
+      enhancementEngine.enhance(currentSong, (updated, msg) => {
+        // Update local state and DB
+        setSongs(prev => prev.map(s => s.id === updated.id ? updated : s));
+        
+        // Show non-intrusive notification for AI successes
+        if (msg.includes("✨") || msg.includes("🎙️") || msg.includes("🖼️")) {
+          setNotifications(prev => [...prev, {
+            code: 'ENHANCEMENT_SUCCESS',
+            message: msg,
+            severity: ErrorSeverity.LOW,
+            category: LogCategory.AI
+          }]);
+          setTimeout(() => {
+            setNotifications(prev => prev.filter(n => n.message !== msg));
+          }, 3000);
+        }
+      });
     }
   }, [currentSong?.id]);
+
+  // Persistent Library Sync
+  useEffect(() => {
+    if (songs.length > 0) {
+      localStorage.setItem('melodix-library-v10', JSON.stringify(songs));
+    }
+  }, [songs]);
 
   // Audio state sync
   useEffect(() => {
@@ -193,7 +220,7 @@ const App: React.FC = () => {
             {activeTab === NavigationTab.Home && (
               <HomeView 
                 currentSong={currentSong} 
-                lyrics="" 
+                lyrics={currentSong?.lrcContent || ""} 
                 isLoadingLyrics={false} 
                 currentTime={progress} 
                 onSongSelect={(s) => queueManager.setQueue([s], 0)} 
@@ -204,7 +231,21 @@ const App: React.FC = () => {
               />
             )}
             {activeTab === NavigationTab.AllSongs && <LibraryView songs={songs} onSongSelect={(s) => queueManager.setQueue([s], 0)} onAddNext={(s) => queueManager.addNext(s)} onAddToQueue={(s) => queueManager.addToEnd(s)} currentSongId={currentSong?.id} onUpdateSong={(s) => setSongs(prev => prev.map(o => o.id === s.id ? s : o))} />}
-            {activeTab === NavigationTab.Playlists && <PlaylistView playlists={playlists} songs={songs} recentSongs={queue.items.slice(0, 10)} selectedPlaylistId={selectedPlaylistId} onSelectPlaylist={setSelectedPlaylistId} onPlayPlaylist={(p) => queueManager.setQueue(p.songIds.map(id => songs.find(s => s.id === id)!), 0)} onDeletePlaylist={(id) => setPlaylists(p => p.filter(pl => pl.id !== id))} onCreatePlaylist={() => setIsCreatorOpen(true)} onSongSelect={(s) => queueManager.setQueue([s], 0)} currentSongId={currentSong?.id} />}
+            {activeTab === NavigationTab.Playlists && (
+              <PlaylistView 
+                playlists={playlists} 
+                songs={songs} 
+                recentSongs={queue.items.slice(0, 10)} 
+                selectedPlaylistId={selectedPlaylistId} 
+                onSelectPlaylist={setSelectedPlaylistId} 
+                onPlayPlaylist={(p) => queueManager.setQueue(p.songIds.map(id => songs.find(s => s.id === id)!), 0)} 
+                onDeletePlaylist={(id) => setPlaylists(p => p.filter(pl => pl.id !== id))} 
+                onCreatePlaylist={() => setIsCreatorOpen(true)} 
+                onSongSelect={(s) => queueManager.setQueue([s], 0)} 
+                currentSongId={currentSong?.id}
+                isPlaying={isPlaying}
+              />
+            )}
             {activeTab === NavigationTab.Settings && <SettingsView settings={settings} onUpdate={setSettings} />}
             {activeTab === NavigationTab.About && <AboutView />}
           </MotionDiv>
@@ -218,10 +259,10 @@ const App: React.FC = () => {
                 initial={{ opacity: 0, x: -50, scale: 0.9 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className={`p-5 rounded-2xl flex items-center gap-4 border shadow-2xl pointer-events-auto mica ${n.severity === ErrorSeverity.LOW ? 'border-zinc-800' : 'border-red-600/20 bg-red-600/5'}`}
+                className={`p-5 rounded-2xl flex items-center gap-4 border shadow-2xl pointer-events-auto mica ${n.code === 'ENHANCEMENT_SUCCESS' ? 'border-emerald-500/20 bg-emerald-500/5' : n.severity === ErrorSeverity.LOW ? 'border-zinc-800' : 'border-red-600/20 bg-red-600/5'}`}
               >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${n.severity === ErrorSeverity.LOW ? 'bg-zinc-800 text-zinc-400' : 'bg-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.3)]'}`}>
-                  <AlertCircle size={20} />
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${n.code === 'ENHANCEMENT_SUCCESS' ? 'bg-emerald-600 text-white' : n.severity === ErrorSeverity.LOW ? 'bg-zinc-800 text-zinc-400' : 'bg-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.3)]'}`}>
+                  {n.code === 'ENHANCEMENT_SUCCESS' ? <Sparkles size={20} /> : <AlertCircle size={20} />}
                 </div>
                 <div className="flex-1 min-w-[200px]">
                   <p className="text-xs font-bold text-white">{n.message}</p>

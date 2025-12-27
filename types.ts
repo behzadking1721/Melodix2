@@ -18,6 +18,10 @@ export interface Song {
   lrcContent?: string;
   replayGain?: number;
   bpm?: number;
+  // Enhancement Status Indicators
+  tagStatus?: 'none' | 'partial' | 'full';
+  lyricsStatus?: 'none' | 'partial' | 'full';
+  coverStatus?: 'none' | 'partial' | 'full';
 }
 
 export interface AlbumViewModel {
