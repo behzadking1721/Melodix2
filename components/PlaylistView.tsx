@@ -7,10 +7,11 @@ import {
   MoreVertical, Heart, Zap, Flame, Mic2, Disc, 
   History, Library, AlignLeft, LayoutList, LayoutGrid, Columns,
   ArrowRight, ChevronRight, Tags, Calendar, Image as ImageIcon,
-  Wand2, Settings2, Edit3, Search
+  Wand2, Settings2, Edit3, Search, Sliders
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SmartPlaylistEngine } from '../services/smartPlaylistEngine';
+import PlaylistEditor from './PlaylistEditor';
 
 const MotionDiv = motion.div as any;
 
@@ -27,13 +28,16 @@ interface PlaylistViewProps {
   onSongSelect: (song: Song) => void;
   currentSongId?: string;
   isPlaying: boolean;
+  onUpdatePlaylist: (p: Playlist) => void;
 }
 
 const PlaylistView: React.FC<PlaylistViewProps> = ({ 
   playlists, songs, recentSongs, selectedPlaylistId, onSelectPlaylist, 
   onPlayPlaylist, onDeletePlaylist, onCreatePlaylist, onSongSelect, currentSongId,
-  isPlaying, onEditSmartPlaylist
+  isPlaying, onEditSmartPlaylist, onUpdatePlaylist
 }) => {
+  const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
+
   const selectedPlaylist = useMemo(() => {
     if (!selectedPlaylistId) return null;
     if (selectedPlaylistId.startsWith('system-')) {
@@ -80,10 +84,6 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({
   }, [playlistSongs]);
 
   const genres = useMemo(() => Array.from(new Set(songs.map(s => s.genre))), [songs]);
-  const decades = useMemo(() => {
-    const years = Array.from(new Set(songs.map(s => s.year)));
-    return Array.from(new Set(years.map((y: number) => Math.floor(y / 10) * 10))).sort((a: number, b: number) => b - a);
-  }, [songs]);
 
   const CategoryCard = ({ id, name, icon: Icon, color, isSmart = false }: { id: string, name: string, icon: any, color: string, isSmart?: boolean }) => {
     const p = playlists.find(pl => pl.id === id) || { id, name, songIds: [], isSmart };
@@ -246,12 +246,13 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({
         </div>
 
         <div className="flex gap-4">
-          {selectedPlaylist?.isSmart && (
+          {!selectedPlaylist?.isSystem && (
             <button 
-              onClick={() => onEditSmartPlaylist?.(selectedPlaylist)}
-              className="p-5 bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 border border-purple-500/20 rounded-[1.5rem] transition-all"
+              onClick={() => setEditingPlaylist(selectedPlaylist)}
+              className="p-5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/10 rounded-[1.5rem] transition-all"
+              title="Architect Playlist"
             >
-               <Settings2 size={24}/>
+               <Sliders size={24}/>
             </button>
           )}
           <button 
@@ -281,7 +282,6 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({
           
           {playlistSongs.length === 0 ? (
             <div className="h-40 flex flex-col items-center justify-center text-zinc-700 gap-4">
-               {/* Fixed: Added Search to lucide-react imports */}
                <Search size={40} className="opacity-10" />
                <p className="text-xs font-black uppercase tracking-widest">No matching tracks found</p>
             </div>
@@ -326,6 +326,21 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({
           )}
         </div>
       </div>
+
+      <AnimatePresence>
+        {editingPlaylist && (
+          <PlaylistEditor 
+            playlist={editingPlaylist} 
+            library={songs} 
+            onClose={() => setEditingPlaylist(null)}
+            onSave={(p) => {
+              onUpdatePlaylist(p);
+              setEditingPlaylist(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       <style>{`
         @keyframes music-bar { 0%, 100% { height: 4px; } 50% { height: 12px; } }
         .animate-music-bar { animation: music-bar 0.6s ease-in-out infinite; }

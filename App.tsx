@@ -157,6 +157,7 @@ const App: React.FC = () => {
                 onCreatePlaylist={() => { setEditingSmartPlaylist(undefined); setIsBuilderOpen(true); }} 
                 onEditSmartPlaylist={(p) => { setEditingSmartPlaylist(p); setIsBuilderOpen(true); }}
                 onSongSelect={(s) => queueManager.setQueue([s], 0)} currentSongId={currentSong?.id} isPlaying={isPlaying} 
+                onUpdatePlaylist={saveSmartPlaylist}
               />
             )}
             {activeTab === NavigationTab.AllSongs && <LibraryView songs={songs} onSongSelect={(s) => queueManager.setQueue([s], 0)} onAddNext={(s) => queueManager.addNext(s)} onAddToQueue={(s) => queueManager.addToEnd(s)} currentSongId={currentSong?.id} onUpdateSong={(s) => setSongs(prev => prev.map(o => o.id === s.id ? s : o))} />}
