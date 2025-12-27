@@ -5,7 +5,8 @@ import {
   Play, Search, LayoutGrid, List, PlusCircle, 
   SearchX, Mic2, ArrowLeft, ChevronRight, Zap,
   Heart, Shuffle, Music2, Clock, Disc, User, 
-  Calendar, Layers, MoreVertical, Tags, Image as ImageIcon
+  Calendar, Layers, MoreVertical, Tags, Image as ImageIcon,
+  Edit3, CheckCircle2
 } from 'lucide-react';
 import TagEditor from './TagEditor';
 import { VirtualList } from './VirtualList';
@@ -33,7 +34,8 @@ const LibraryView: React.FC<LibraryViewProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [path, setPath] = useState<DrillDownPath>({ type: 'root', id: null, label: 'Library' });
-  const [editingSong, setEditingSong] = useState<Song | null>(null);
+  const [editingSongs, setEditingSongs] = useState<Song[] | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Advanced Library Aggregator
   const artists = useMemo(() => {
@@ -95,6 +97,19 @@ const LibraryView: React.FC<LibraryViewProps> = ({
     }
   };
 
+  const handleToggleSelect = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedIds(newSet);
+  };
+
+  const handleOpenBatchEditor = () => {
+    const selected = songs.filter(s => selectedIds.has(s.id));
+    if (selected.length > 0) setEditingSongs(selected);
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     show: {
@@ -152,15 +167,27 @@ const LibraryView: React.FC<LibraryViewProps> = ({
           </div>
         </div>
 
-        <div className="relative group">
-          <Search size={16} className="absolute left-5 top-4 text-zinc-500 group-focus-within:text-[var(--accent-color)] transition-colors" />
-          <input 
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search within vault..."
-            className="bg-white/5 border border-white/5 rounded-[1.5rem] py-4 pl-14 pr-6 text-sm font-bold focus:w-96 w-64 transition-all outline-none placeholder:text-zinc-700"
-          />
+        <div className="flex items-center gap-4">
+           {selectedIds.size > 0 && (
+             <motion.button 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              onClick={handleOpenBatchEditor}
+              className="px-6 py-4 bg-purple-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-3 shadow-xl shadow-purple-600/20"
+             >
+                <Edit3 size={14} /> Batch Edit ({selectedIds.size})
+             </motion.button>
+           )}
+           <div className="relative group">
+            <Search size={16} className="absolute left-5 top-4 text-zinc-500 group-focus-within:text-[var(--accent-color)] transition-colors" />
+            <input 
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search within vault..."
+              className="bg-white/5 border border-white/5 rounded-[1.5rem] py-4 pl-14 pr-6 text-sm font-bold focus:w-96 w-64 transition-all outline-none placeholder:text-zinc-700"
+            />
+          </div>
         </div>
       </div>
 
@@ -168,7 +195,6 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         <AnimatePresence mode="wait">
           {searchQuery ? (
             <MotionDiv key="search" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full">
-               {/* Explicitly typed the generic parameter to fix unknown type error */}
                <VirtualList<Song> 
                  items={filteredData || []} 
                  itemHeight={80} 
@@ -178,6 +204,8 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                       key={song.id} 
                       song={song} 
                       onSelect={() => onSongSelect(song)} 
+                      isSelected={selectedIds.has(song.id)}
+                      onToggleSelect={(e) => handleToggleSelect(e, song.id)}
                       isPlaying={song.id === currentSongId} 
                       onAddNext={() => onAddNext(song)} 
                       onAddToQueue={() => onAddToQueue(song)} 
@@ -275,6 +303,8 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                       key={song.id} 
                       song={song} 
                       onSelect={() => onSongSelect(song)} 
+                      isSelected={selectedIds.has(song.id)}
+                      onToggleSelect={(e) => handleToggleSelect(e, song.id)}
                       isPlaying={song.id === currentSongId} 
                       onAddNext={() => onAddNext(song)} 
                       onAddToQueue={() => onAddToQueue(song)} 
@@ -324,6 +354,8 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                       key={song.id} 
                       song={song} 
                       onSelect={() => onSongSelect(song)} 
+                      isSelected={selectedIds.has(song.id)}
+                      onToggleSelect={(e) => handleToggleSelect(e, song.id)}
                       isPlaying={song.id === currentSongId} 
                       onAddNext={() => onAddNext(song)} 
                       onAddToQueue={() => onAddToQueue(song)} 
@@ -337,7 +369,11 @@ const LibraryView: React.FC<LibraryViewProps> = ({
       </div>
 
       <AnimatePresence>
-        {editingSong && <TagEditor song={editingSong} onClose={() => setEditingSong(null)} onSave={(u) => { onUpdateSong(u); setEditingSong(null); }} />}
+        {editingSongs && <TagEditor songs={editingSongs} onClose={() => setEditingSongs(null)} onSave={(updated) => { 
+          updated.forEach(u => onUpdateSong(u));
+          setSelectedIds(new Set());
+          setEditingSongs(null); 
+        }} />}
       </AnimatePresence>
     </div>
   );
@@ -346,14 +382,15 @@ const LibraryView: React.FC<LibraryViewProps> = ({
 interface SongRowProps {
   song: Song;
   onSelect: () => void;
+  isSelected?: boolean;
+  onToggleSelect?: (e: React.MouseEvent) => void;
   isPlaying: boolean;
   onAddNext: () => void;
   onAddToQueue: () => void;
   index?: number;
-  key?: React.Key; // Added key to satisfy TypeScript when used as an attribute
 }
 
-const SongRow = ({ song, onSelect, isPlaying, onAddNext, onAddToQueue, index }: SongRowProps) => {
+const SongRow = ({ song, onSelect, isSelected, onToggleSelect, isPlaying, onAddNext, onAddToQueue, index }: SongRowProps) => {
   const getStatusColor = (status?: string) => {
     switch(status) {
       case 'full': return 'text-emerald-500';
@@ -367,18 +404,27 @@ const SongRow = ({ song, onSelect, isPlaying, onAddNext, onAddToQueue, index }: 
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       whileHover={{ x: 5 }}
-      className={`group flex items-center gap-6 px-8 h-20 rounded-[1.5rem] transition-all cursor-pointer relative ${isPlaying ? 'bg-[var(--accent-color)]/10 border border-[var(--accent-color)]/20 shadow-[0_10px_30px_rgba(59,130,246,0.1)]' : 'hover:bg-white/[0.04] border border-transparent'}`} 
+      className={`group flex items-center gap-6 px-8 h-20 rounded-[1.5rem] transition-all cursor-pointer relative ${isPlaying ? 'bg-[var(--accent-color)]/10 border border-[var(--accent-color)]/20 shadow-[0_10px_30px_rgba(59,130,246,0.1)]' : isSelected ? 'bg-purple-600/10 border border-purple-500/20' : 'hover:bg-white/[0.04] border border-transparent'}`} 
       onClick={onSelect}
     >
-      <div className="w-8 text-[11px] font-black text-zinc-700 text-center group-hover:text-[var(--accent-color)] transition-colors">
-        {isPlaying ? (
+      <div 
+        onClick={onToggleSelect}
+        className="w-8 flex items-center justify-center group-hover:scale-110 transition-transform"
+      >
+        {isSelected ? (
+          <div className="w-5 h-5 bg-purple-600 rounded-lg flex items-center justify-center text-white">
+            <CheckCircle2 size={14} />
+          </div>
+        ) : isPlaying ? (
           <div className="flex gap-0.5 items-end justify-center h-3">
             {[1,2,3].map(b => (
               <div key={b} className="w-0.5 bg-[var(--accent-color)] animate-music-bar-small" style={{ animationDelay: `${b * 0.1}s` }} />
             ))}
           </div>
         ) : (
-          index || song.trackNumber || '•'
+          <div className="text-[11px] font-black text-zinc-700 text-center group-hover:text-[var(--accent-color)] transition-colors">
+            {index || song.trackNumber || '•'}
+          </div>
         )}
       </div>
       

@@ -1,12 +1,28 @@
 
+export interface TagSnapshot {
+  id: string;
+  timestamp: number;
+  data: Partial<Song>;
+}
+
 export interface Song {
   id: string;
   title: string;
   artist: string;
   album: string;
+  albumArtist?: string;
   genre: string;
   year: number;
   trackNumber?: number;
+  trackCount?: number;
+  discNumber?: number;
+  discCount?: number;
+  comment?: string;
+  composer?: string;
+  publisher?: string;
+  isrc?: string;
+  bpm?: number;
+  lyricsLanguage?: string;
   duration: number; 
   coverUrl: string;
   url: string;
@@ -19,10 +35,10 @@ export interface Song {
   hasLyrics?: boolean;
   lrcContent?: string;
   replayGain?: number;
-  bpm?: number;
   tagStatus?: 'none' | 'partial' | 'full';
   lyricsStatus?: 'none' | 'partial' | 'full';
   coverStatus?: 'none' | 'partial' | 'full';
+  tagHistory?: TagSnapshot[];
 }
 
 export type ConditionOperator = 
