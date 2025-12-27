@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Library, Settings, Info, Home, ListMusic, Zap, LayoutGrid, Download, User, ShieldCheck, Activity, Puzzle, Brain, TerminalSquare
+  Library, Settings, Info, Home, ListMusic, Zap, LayoutGrid, Download, User, ShieldCheck, Activity, Puzzle, Brain, TerminalSquare, Cloud
 } from 'lucide-react';
 import { NavigationTab, Playlist, DownloadTask } from '../types';
 import { enhancementEngine } from '../services/enhancementEngine';
@@ -62,6 +62,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <NavItem icon={Library} label="Library" tab={NavigationTab.AllSongs} />
         <NavItem icon={ListMusic} label="Playlists" tab={NavigationTab.Playlists} />
         <NavItem icon={Download} label="Downloads" tab={NavigationTab.Downloads} />
+        <NavItem icon={Cloud} label="Cloud Sync" tab={NavigationTab.CloudSync} />
         <NavItem icon={ShieldCheck} label="SafeBox" tab={NavigationTab.Backup} />
         <NavItem icon={Activity} label="Diagnostics" tab={NavigationTab.Diagnostics} />
         <NavItem icon={Brain} label="Neural Hub" tab={NavigationTab.AISettings} />

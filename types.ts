@@ -34,23 +34,7 @@ export type ExtensionType =
   | 'ui-mod' 
   | 'automation';
 
-export interface MelodixScript {
-  id: string;
-  name: string;
-  code: string;
-  lastRun?: number;
-  status: 'idle' | 'running' | 'error';
-}
-
-export interface AutomationRule {
-  id: string;
-  name: string;
-  trigger: 'track-start' | 'metadata-missing' | 'mood-change' | 'low-res-cover';
-  condition: string;
-  action: string;
-  enabled: boolean;
-}
-
+// Added missing MelodixExtension interface
 export interface MelodixExtension {
   id: string;
   name: string;
@@ -60,11 +44,10 @@ export interface MelodixExtension {
   type: ExtensionType;
   status: 'enabled' | 'disabled';
   permissions: string[];
-  iconUrl?: string;
-  entryPoint?: string;
   hasSettings: boolean;
 }
 
+// Added missing AISettings interface
 export interface AISettings {
   smartSearch: {
     enabled: boolean;
@@ -96,7 +79,7 @@ export interface AISettings {
   };
   enhancement: {
     retryAttempts: number;
-    networkLimit: 'unlimited' | 'metered' | 'wifi-only';
+    networkLimit: 'unlimited' | 'wifi-only' | 'off';
     priority: 'lyrics' | 'tags' | 'covers';
     autoSaveToFile: boolean;
   };
@@ -110,6 +93,49 @@ export interface AISettings {
     tags: string[];
     covers: string[];
   };
+}
+
+export interface MelodixScript {
+  id: string;
+  name: string;
+  code: string;
+  lastRun?: number;
+  status: 'idle' | 'running' | 'error';
+}
+
+export interface AutomationRule {
+  id: string;
+  name: string;
+  trigger: 'track-start' | 'metadata-missing' | 'mood-change' | 'low-res-cover';
+  condition: string;
+  action: string;
+  enabled: boolean;
+}
+
+export interface CloudDevice {
+  id: string;
+  name: string;
+  type: 'desktop' | 'mobile' | 'tablet' | 'web';
+  lastSync: number;
+  status: 'online' | 'offline' | 'syncing';
+  os: string;
+}
+
+export interface SyncEvent {
+  id: string;
+  timestamp: number;
+  type: 'upload' | 'download' | 'merge';
+  dataType: string;
+  status: 'success' | 'failed' | 'pending';
+  itemCount: number;
+}
+
+export interface SyncConflict {
+  id: string;
+  type: 'settings' | 'playlist' | 'metadata';
+  description: string;
+  localTime: number;
+  cloudTime: number;
 }
 
 export interface AppSettings {
@@ -162,6 +188,20 @@ export interface AppSettings {
   backupFrequency: 'never' | 'daily' | 'weekly' | 'monthly' | 'on-exit';
   autoCleanupBackups: boolean;
   ai: AISettings;
+  sync: {
+    enabled: boolean;
+    provider: 'onedrive' | 'gdrive' | 'dropbox' | 'none';
+    autoSync: boolean;
+    syncOnExit: boolean;
+    conflictStrategy: 'ask' | 'keep-local' | 'keep-cloud' | 'smart-merge';
+    syncTypes: {
+      playlists: boolean;
+      settings: boolean;
+      metadata: boolean;
+      history: boolean;
+      stats: boolean;
+    };
+  };
 }
 
 export enum NavigationTab {
@@ -177,7 +217,8 @@ export enum NavigationTab {
   Diagnostics = 'diagnostics',
   Extensions = 'extensions',
   AISettings = 'ai-settings',
-  Developer = 'developer', // New
+  Developer = 'developer',
+  CloudSync = 'cloud-sync', // New
   Settings = 'settings',
   About = 'about'
 }

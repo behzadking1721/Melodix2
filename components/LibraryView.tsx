@@ -168,11 +168,12 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         <AnimatePresence mode="wait">
           {searchQuery ? (
             <MotionDiv key="search" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full">
-               <VirtualList 
+               {/* Explicitly typed the generic parameter to fix unknown type error */}
+               <VirtualList<Song> 
                  items={filteredData || []} 
                  itemHeight={80} 
                  containerHeight={window.innerHeight - 250} 
-                 renderItem={(song) => (
+                 renderItem={(song: Song) => (
                     <SongRow 
                       key={song.id} 
                       song={song} 
@@ -349,6 +350,7 @@ interface SongRowProps {
   onAddNext: () => void;
   onAddToQueue: () => void;
   index?: number;
+  key?: React.Key; // Added key to satisfy TypeScript when used as an attribute
 }
 
 const SongRow = ({ song, onSelect, isPlaying, onAddNext, onAddToQueue, index }: SongRowProps) => {

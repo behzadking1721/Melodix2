@@ -34,7 +34,8 @@ const DownloadsManagerView: React.FC<DownloadsManagerViewProps> = ({ tasks }) =>
     }
   }, [tasks, activeTab]);
 
-  const TaskItem = ({ task }: { task: DownloadTask }) => (
+  // Added key to props type definition to fix TypeScript assignment errors
+  const TaskItem = ({ task }: { task: DownloadTask, key?: React.Key }) => (
     <MotionDiv 
       layout
       initial={{ opacity: 0, x: -20 }}

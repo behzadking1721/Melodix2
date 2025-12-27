@@ -75,7 +75,8 @@ const SearchResultsView: React.FC<SearchResultsViewProps> = ({
 
       if (filters.genres.length > 0 && !filters.genres.includes(s.genre)) return false;
       
-      const decade = Math.floor(s.year / 10) * 10;
+      // Fixed: Explicitly typed arithmetic operation to avoid TypeScript errors
+      const decade = Math.floor((s.year as number) / 10) * 10;
       if (filters.eras.length > 0 && !filters.eras.includes(decade)) return false;
 
       if (filters.durations.length > 0) {

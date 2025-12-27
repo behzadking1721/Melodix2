@@ -59,7 +59,8 @@ const SmartSearch: React.FC<SmartSearchProps> = ({ songs, currentSong, isOpen, o
     }
   };
 
-  const ResultRow = ({ song, isTop = false }: { song: Song, isTop?: boolean }) => (
+  // Added key prop to fix TypeScript errors when component is used in a map
+  const ResultRow = ({ song, isTop = false }: { song: Song, isTop?: boolean, key?: React.Key }) => (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}

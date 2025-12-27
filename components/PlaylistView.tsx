@@ -82,10 +82,12 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({
   const genres = useMemo(() => Array.from(new Set(songs.map(s => s.genre))), [songs]);
   const decades = useMemo(() => {
     const years = Array.from(new Set(songs.map(s => s.year)));
-    return Array.from(new Set(years.map(y => Math.floor(y / 10) * 10))).sort((a, b) => b - a);
+    // Fixed: Added explicit typing to map callback to avoid arithmetic operation errors
+    return Array.from(new Set(years.map((y: number) => Math.floor(y / 10) * 10))).sort((a: number, b: number) => b - a);
   }, [songs]);
 
-  const CategoryCard = ({ id, name, icon: Icon, color, count }: { id: string, name: string, icon: any, color: string, count?: number }) => {
+  // Added key to props type definition to fix TypeScript assignment errors
+  const CategoryCard = ({ id, name, icon: Icon, color, count }: { id: string, name: string, icon: any, color: string, count?: number, key?: React.Key }) => {
     const categorySongs = count !== undefined ? { length: count } : getSongsForPlaylistId(id);
     return (
       <MotionDiv 
@@ -238,7 +240,7 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({
           <div className="absolute inset-0 bg-black/20" />
         </div>
 
-        <div className="flex-1 min-w-0 space-y-4">
+        <div className="flex-1 min-0 space-y-4">
           <div className="space-y-2">
             <p className="text-[11px] font-black text-[var(--accent-color)] uppercase tracking-[0.4em]">Playlist Collection</p>
             <h1 className="text-7xl font-black text-white tracking-tighter truncate leading-tight">

@@ -16,7 +16,8 @@ import BackupRestoreView from './components/BackupRestoreView';
 import DiagnosticsView from './components/DiagnosticsView';
 import ExtensionsView from './components/ExtensionsView';
 import AISettingsView from './components/AISettingsView';
-import DeveloperView from './components/DeveloperView'; // New
+import DeveloperView from './components/DeveloperView';
+import MultiDeviceSyncView from './components/MultiDeviceSyncView'; // New
 import Equalizer from './components/Equalizer';
 import SettingsView from './components/SettingsView';
 import AboutView from './components/AboutView';
@@ -103,31 +104,18 @@ const App: React.FC = () => {
         await initDB();
         const savedSongs = localStorage.getItem('melodix-library-v10');
         const savedPlaylists = localStorage.getItem('melodix-playlists-v5');
-        const savedSettings = localStorage.getItem('melodix-settings-v11');
+        const savedSettings = localStorage.getItem('melodix-settings-v12');
 
         setSongs(savedSongs ? JSON.parse(savedSongs) : MOCK_SONGS);
         setPlaylists(savedPlaylists ? JSON.parse(savedPlaylists) : []);
         
         const defaultAI: AISettings = {
-          smartSearch: {
-            enabled: true, fuzzyMatching: true, typoCorrection: true, semanticSearch: false,
-            weights: { title: 80, artist: 60, album: 40, genre: 20, filename: 10 }
-          },
-          recommendation: {
-            enabled: true, useHistory: true, useSimilarity: true, useMood: true,
-            strength: 75, diversity: 40, threshold: 50
-          },
-          moodDetection: {
-            enabled: true, analyzeWaveform: true, analyzeLyrics: true,
-            categories: ['Happy', 'Sad', 'Energetic', 'Calm']
-          },
+          smartSearch: { enabled: true, fuzzyMatching: true, typoCorrection: true, semanticSearch: false, weights: { title: 80, artist: 60, album: 40, genre: 20, filename: 10 } },
+          recommendation: { enabled: true, useHistory: true, useSimilarity: true, useMood: true, strength: 75, diversity: 40, threshold: 50 },
+          moodDetection: { enabled: true, analyzeWaveform: true, analyzeLyrics: true, categories: ['Happy', 'Sad', 'Energetic', 'Calm'] },
           enhancement: { retryAttempts: 3, networkLimit: 'unlimited', priority: 'lyrics', autoSaveToFile: false },
           privacy: { localInferenceOnly: false, anonymousUsageData: true, cloudSyncEnabled: true },
-          providerPriority: {
-            lyrics: ['Gemini', 'Musixmatch', 'Local'],
-            tags: ['MusicBrainz', 'Gemini', 'Discogs'],
-            covers: ['Official', 'Gemini', 'Fanart.tv']
-          }
+          providerPriority: { lyrics: ['Gemini', 'Musixmatch', 'Local'], tags: ['MusicBrainz', 'Gemini', 'Discogs'], covers: ['Official', 'Gemini', 'Fanart.tv'] }
         };
 
         const defaultSettings: AppSettings = {
@@ -145,7 +133,16 @@ const App: React.FC = () => {
           autoUpdateCover: true, showStatusIcons: true, taskScheduling: 'playback',
           alwaysOnTop: false, visualizationEnabled: true, waveformEnabled: true,
           isDefaultPlayer: true, minFileSizeMB: 2, minDurationSec: 30,
-          backupFrequency: 'weekly', autoCleanupBackups: true, ai: defaultAI
+          backupFrequency: 'weekly', autoCleanupBackups: true,
+          ai: defaultAI,
+          sync: {
+            enabled: true,
+            provider: 'onedrive',
+            autoSync: true,
+            syncOnExit: true,
+            conflictStrategy: 'smart-merge',
+            syncTypes: { playlists: true, settings: true, metadata: true, history: true, stats: true }
+          }
         };
 
         const currentSettings = savedSettings ? JSON.parse(savedSettings) : defaultSettings;
@@ -167,7 +164,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!settings) return;
-    localStorage.setItem('melodix-settings-v11', JSON.stringify(settings));
+    localStorage.setItem('melodix-settings-v12', JSON.stringify(settings));
   }, [settings]);
 
   useEffect(() => {
@@ -217,7 +214,7 @@ const App: React.FC = () => {
         <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }}>
            <Zap className="text-[#3b82f6]" size={48} fill="currentColor" />
         </motion.div>
-        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700 animate-pulse">Initializing Neural Core...</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700 animate-pulse">Syncing Neural Core...</p>
       </div>
     );
   }
@@ -253,6 +250,7 @@ const App: React.FC = () => {
             {activeTab === NavigationTab.Extensions && <ExtensionsView />}
             {activeTab === NavigationTab.AISettings && <AISettingsView settings={settings} onUpdate={setSettings} />}
             {activeTab === NavigationTab.Developer && <DeveloperView />}
+            {activeTab === NavigationTab.CloudSync && <MultiDeviceSyncView settings={settings} onUpdate={setSettings} />}
             {activeTab === NavigationTab.Collections && <CollectionsView songs={songs} onSongSelect={(s) => queueManager.setQueue([s], 0)} currentSongId={currentSong?.id} onPlayPlaylist={(songsList, title) => queueManager.setQueue(songsList, 0)} />}
             {activeTab === NavigationTab.Search && <SearchResultsView query={searchQuery} songs={songs} playlists={playlists} onSongSelect={(s) => queueManager.setQueue([s], 0)} currentSongId={currentSong?.id} onClear={() => { setSearchQuery(''); setActiveTab(NavigationTab.Home); }} />}
             {activeTab === NavigationTab.Downloads && <DownloadsManagerView tasks={tasks} />}
