@@ -6,9 +6,10 @@ import {
   SearchX, Mic2, ArrowLeft, ChevronRight, Zap,
   Heart, Shuffle, Music2, Clock, Disc, User, 
   Calendar, Layers, MoreVertical, Tags, Image as ImageIcon,
-  Edit3, CheckCircle2
+  Edit3, CheckCircle2, Sliders
 } from 'lucide-react';
 import TagEditor from './TagEditor';
+import AlbumEditor from './AlbumEditor'; // New
 import { VirtualList } from './VirtualList';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -35,6 +36,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [path, setPath] = useState<DrillDownPath>({ type: 'root', id: null, label: 'Library' });
   const [editingSongs, setEditingSongs] = useState<Song[] | null>(null);
+  const [editingAlbum, setEditingAlbum] = useState<AlbumViewModel | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Advanced Library Aggregator
@@ -332,11 +334,11 @@ const LibraryView: React.FC<LibraryViewProps> = ({
                      <button onClick={() => currentAlbum && onSongSelect(currentAlbum.songs[0])} className="px-10 py-4 bg-white text-black rounded-2xl font-black text-xs flex items-center gap-4 hover:scale-105 transition-all shadow-2xl">
                         <Play size={20} fill="currentColor" /> Play Album
                      </button>
+                     <button onClick={() => currentAlbum && setEditingAlbum(currentAlbum)} className="px-8 py-4 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/10 rounded-2xl font-black text-xs flex items-center gap-3 transition-all">
+                        <Sliders size={18} /> Architect Album
+                     </button>
                      <button className="px-10 py-4 bg-white/5 border border-white/10 text-white rounded-2xl font-black text-xs flex items-center gap-4 hover:bg-white/10 transition-all">
                         <Shuffle size={20} /> Shuffle
-                     </button>
-                     <button className="p-4 bg-white/5 border border-white/10 text-white rounded-2xl hover:text-[var(--accent-color)] transition-all">
-                        <PlusCircle size={24} />
                      </button>
                    </div>
                  </div>
@@ -373,6 +375,11 @@ const LibraryView: React.FC<LibraryViewProps> = ({
           updated.forEach(u => onUpdateSong(u));
           setSelectedIds(new Set());
           setEditingSongs(null); 
+        }} />}
+        
+        {editingAlbum && <AlbumEditor album={editingAlbum} onClose={() => setEditingAlbum(null)} onSave={(updated) => {
+          updated.forEach(u => onUpdateSong(u));
+          setEditingAlbum(null);
         }} />}
       </AnimatePresence>
     </div>
