@@ -13,7 +13,10 @@ import SearchResultsView from './components/SearchResultsView';
 import DownloadsManagerView from './components/DownloadsManagerView';
 import ProfileView from './components/ProfileView';
 import BackupRestoreView from './components/BackupRestoreView';
-import DiagnosticsView from './components/DiagnosticsView'; // New
+import DiagnosticsView from './components/DiagnosticsView';
+import ExtensionsView from './components/ExtensionsView';
+import AISettingsView from './components/AISettingsView';
+import DeveloperView from './components/DeveloperView'; // New
 import Equalizer from './components/Equalizer';
 import SettingsView from './components/SettingsView';
 import AboutView from './components/AboutView';
@@ -21,7 +24,7 @@ import SmartPlaylistCreator from './components/SmartPlaylistCreator';
 import SmartSearch from './components/SmartSearch';
 import TitleBar from './components/TitleBar';
 import CrashView from './components/CrashView';
-import { Song, NavigationTab, EQSettings, Playlist, AppSettings, QueueState, AudioOutputMode, DownloadTask } from './types';
+import { Song, NavigationTab, EQSettings, Playlist, AppSettings, QueueState, AudioOutputMode, DownloadTask, AISettings } from './types';
 import { MOCK_SONGS } from './constants';
 import { AudioEngine } from './services/audioEngine';
 import { queueManager } from './services/queueManager';
@@ -100,60 +103,49 @@ const App: React.FC = () => {
         await initDB();
         const savedSongs = localStorage.getItem('melodix-library-v10');
         const savedPlaylists = localStorage.getItem('melodix-playlists-v5');
-        const savedSettings = localStorage.getItem('melodix-settings-v10');
+        const savedSettings = localStorage.getItem('melodix-settings-v11');
 
         setSongs(savedSongs ? JSON.parse(savedSongs) : MOCK_SONGS);
         setPlaylists(savedPlaylists ? JSON.parse(savedPlaylists) : []);
         
+        const defaultAI: AISettings = {
+          smartSearch: {
+            enabled: true, fuzzyMatching: true, typoCorrection: true, semanticSearch: false,
+            weights: { title: 80, artist: 60, album: 40, genre: 20, filename: 10 }
+          },
+          recommendation: {
+            enabled: true, useHistory: true, useSimilarity: true, useMood: true,
+            strength: 75, diversity: 40, threshold: 50
+          },
+          moodDetection: {
+            enabled: true, analyzeWaveform: true, analyzeLyrics: true,
+            categories: ['Happy', 'Sad', 'Energetic', 'Calm']
+          },
+          enhancement: { retryAttempts: 3, networkLimit: 'unlimited', priority: 'lyrics', autoSaveToFile: false },
+          privacy: { localInferenceOnly: false, anonymousUsageData: true, cloudSyncEnabled: true },
+          providerPriority: {
+            lyrics: ['Gemini', 'Musixmatch', 'Local'],
+            tags: ['MusicBrainz', 'Gemini', 'Discogs'],
+            covers: ['Official', 'Gemini', 'Fanart.tv']
+          }
+        };
+
         const defaultSettings: AppSettings = {
-          language: 'en',
-          launchOnBoot: false,
-          launchMinimized: false,
-          defaultPage: 'main',
-          showToasts: true,
-          themeMode: 'dark',
-          activeThemeId: 'classic-dark',
-          customThemes: [],
-          accentColor: '#3b82f6',
-          uiDensity: 'comfortable',
-          enableAnimations: true,
-          enableBlur: true,
-          miniMode: false,
-          miniProgress: true,
-          miniCover: true,
-          gaplessPlayback: true,
-          crossfadeSec: 3,
-          autoNormalize: true,
-          highQualityMode: true,
-          audioDevice: 'default',
-          audioOutputMode: AudioOutputMode.Shared,
-          targetSampleRate: 44100,
-          musicFolders: ['C:\\Users\\Default\\Music'],
-          autoRescan: true,
-          preferEmbeddedTags: true,
-          detectDuplicates: true,
-          groupByAlbumArtist: true,
-          lyricsProvider: 'gemini',
-          autoSaveLyrics: true,
-          preferSyncedLrc: true,
-          tagProvider: 'gemini',
-          hdCoverArt: true,
-          replaceLowQualCover: true,
-          saveInsideFile: false,
-          enableEnhancement: true,
-          autoFixTags: true,
-          autoFetchLyrics: true,
-          autoUpdateCover: true,
-          showStatusIcons: true,
-          taskScheduling: 'playback',
-          alwaysOnTop: false,
-          visualizationEnabled: true,
-          waveformEnabled: true,
-          isDefaultPlayer: true,
-          minFileSizeMB: 2,
-          minDurationSec: 30,
-          backupFrequency: 'weekly',
-          autoCleanupBackups: true
+          language: 'en', launchOnBoot: false, launchMinimized: false, defaultPage: 'main',
+          showToasts: true, themeMode: 'dark', activeThemeId: 'classic-dark', customThemes: [],
+          accentColor: '#3b82f6', uiDensity: 'comfortable', enableAnimations: true,
+          enableBlur: true, miniMode: false, miniProgress: true, miniCover: true,
+          gaplessPlayback: true, crossfadeSec: 3, autoNormalize: true, highQualityMode: true,
+          audioDevice: 'default', audioOutputMode: AudioOutputMode.Shared, targetSampleRate: 44100,
+          musicFolders: ['C:\\Users\\Default\\Music'], autoRescan: true, preferEmbeddedTags: true,
+          detectDuplicates: true, groupByAlbumArtist: true, lyricsProvider: 'gemini',
+          autoSaveLyrics: true, preferSyncedLrc: true, tagProvider: 'gemini',
+          hdCoverArt: true, replaceLowQualCover: true, saveInsideFile: false,
+          enableEnhancement: true, autoFixTags: true, autoFetchLyrics: true,
+          autoUpdateCover: true, showStatusIcons: true, taskScheduling: 'playback',
+          alwaysOnTop: false, visualizationEnabled: true, waveformEnabled: true,
+          isDefaultPlayer: true, minFileSizeMB: 2, minDurationSec: 30,
+          backupFrequency: 'weekly', autoCleanupBackups: true, ai: defaultAI
         };
 
         const currentSettings = savedSettings ? JSON.parse(savedSettings) : defaultSettings;
@@ -164,7 +156,6 @@ const App: React.FC = () => {
         ThemeManager.applyTheme(initialTheme);
         
         await engine.setOutputDevice(currentSettings.audioDevice, currentSettings.audioOutputMode);
-        
         setIsReady(true);
         logger.endTimer('startup', LogCategory.SYSTEM, 'System successfully hydrated');
       } catch (e) {
@@ -176,7 +167,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!settings) return;
-    localStorage.setItem('melodix-settings-v10', JSON.stringify(settings));
+    localStorage.setItem('melodix-settings-v11', JSON.stringify(settings));
   }, [settings]);
 
   useEffect(() => {
@@ -190,30 +181,20 @@ const App: React.FC = () => {
     if (currentSong) {
       engine.play(currentSong, (settings?.crossfadeSec ?? 0) > 0);
       setIsPlaying(true);
-      
-      if (settings?.enableEnhancement) {
-        enhancementEngine.enqueue(currentSong);
-      }
+      if (settings?.enableEnhancement) enhancementEngine.enqueue(currentSong);
     }
   }, [currentSong?.id]);
 
   useEffect(() => {
-    if (songs.length > 0) {
-      localStorage.setItem('melodix-library-v10', JSON.stringify(songs));
-    }
+    if (songs.length > 0) localStorage.setItem('melodix-library-v10', JSON.stringify(songs));
   }, [songs]);
 
   useEffect(() => {
     const el = engine.getActiveElement();
     const update = () => setProgress(el.currentTime);
     el.addEventListener('timeupdate', update);
-    el.addEventListener('ended', () => {
-      setIsPlaying(false);
-      queueManager.next();
-    });
-    return () => {
-      el.removeEventListener('timeupdate', update);
-    };
+    el.addEventListener('ended', () => { setIsPlaying(false); queueManager.next(); });
+    return () => el.removeEventListener('timeupdate', update);
   }, [currentSong]);
 
   const handleTogglePlay = () => {
@@ -224,12 +205,8 @@ const App: React.FC = () => {
 
   const handleSearch = (q: string) => {
     setSearchQuery(q);
-    if (q) {
-      setActiveTab(NavigationTab.Search);
-      setSelectedPlaylistId(null);
-    } else {
-      setActiveTab(NavigationTab.Home);
-    }
+    if (q) { setActiveTab(NavigationTab.Search); setSelectedPlaylistId(null); }
+    else setActiveTab(NavigationTab.Home);
   };
 
   if (fatalError) return <CrashView error={fatalError} onRestart={() => window.location.reload()} />;
@@ -269,113 +246,32 @@ const App: React.FC = () => {
             exit={settings.enableAnimations ? { opacity: 0 } : false}
             className="h-full"
           >
-            {activeTab === NavigationTab.Home && (
-              <HomeView 
-                currentSong={currentSong} 
-                lyrics={currentSong?.lrcContent || ""} 
-                isLoadingLyrics={false} 
-                currentTime={progress} 
-                onSongSelect={(s) => queueManager.setQueue([s], 0)} 
-                recentSongs={queue.items.slice(0, 10)} 
-                library={songs}
-                isPlaying={isPlaying}
-                onTogglePlay={handleTogglePlay}
-              />
-            )}
+            {activeTab === NavigationTab.Home && <HomeView currentSong={currentSong} lyrics={currentSong?.lrcContent || ""} isLoadingLyrics={false} currentTime={progress} onSongSelect={(s) => queueManager.setQueue([s], 0)} recentSongs={queue.items.slice(0, 10)} library={songs} isPlaying={isPlaying} onTogglePlay={handleTogglePlay} />}
             {activeTab === NavigationTab.Profile && <ProfileView songs={songs} />}
             {activeTab === NavigationTab.Backup && <BackupRestoreView />}
-            {activeTab === NavigationTab.Diagnostics && (
-              <DiagnosticsView 
-                currentSong={currentSong} 
-                tasksCount={tasks.filter(t => t.status === 'processing').length} 
-              />
-            )}
-            {activeTab === NavigationTab.Collections && (
-              <CollectionsView 
-                songs={songs} 
-                onSongSelect={(s) => queueManager.setQueue([s], 0)} 
-                currentSongId={currentSong?.id}
-                onPlayPlaylist={(songsList, title) => queueManager.setQueue(songsList, 0)}
-              />
-            )}
-            {activeTab === NavigationTab.Search && (
-              <SearchResultsView 
-                query={searchQuery}
-                songs={songs}
-                playlists={playlists}
-                onSongSelect={(s) => queueManager.setQueue([s], 0)}
-                currentSongId={currentSong?.id}
-                onClear={() => { setSearchQuery(''); setActiveTab(NavigationTab.Home); }}
-              />
-            )}
-            {activeTab === NavigationTab.Downloads && (
-              <DownloadsManagerView tasks={tasks} />
-            )}
+            {activeTab === NavigationTab.Diagnostics && <DiagnosticsView currentSong={currentSong} tasksCount={tasks.filter(t => t.status === 'processing').length} />}
+            {activeTab === NavigationTab.Extensions && <ExtensionsView />}
+            {activeTab === NavigationTab.AISettings && <AISettingsView settings={settings} onUpdate={setSettings} />}
+            {activeTab === NavigationTab.Developer && <DeveloperView />}
+            {activeTab === NavigationTab.Collections && <CollectionsView songs={songs} onSongSelect={(s) => queueManager.setQueue([s], 0)} currentSongId={currentSong?.id} onPlayPlaylist={(songsList, title) => queueManager.setQueue(songsList, 0)} />}
+            {activeTab === NavigationTab.Search && <SearchResultsView query={searchQuery} songs={songs} playlists={playlists} onSongSelect={(s) => queueManager.setQueue([s], 0)} currentSongId={currentSong?.id} onClear={() => { setSearchQuery(''); setActiveTab(NavigationTab.Home); }} />}
+            {activeTab === NavigationTab.Downloads && <DownloadsManagerView tasks={tasks} />}
             {activeTab === NavigationTab.AllSongs && <LibraryView songs={songs} onSongSelect={(s) => queueManager.setQueue([s], 0)} onAddNext={(s) => queueManager.addNext(s)} onAddToQueue={(s) => queueManager.addToEnd(s)} currentSongId={currentSong?.id} onUpdateSong={(s) => setSongs(prev => prev.map(o => o.id === s.id ? s : o))} />}
-            {activeTab === NavigationTab.Playlists && (
-              <PlaylistView 
-                playlists={playlists} 
-                songs={songs} 
-                recentSongs={queue.items.slice(0, 10)} 
-                selectedPlaylistId={selectedPlaylistId} 
-                onSelectPlaylist={setSelectedPlaylistId} 
-                onPlayPlaylist={(p) => queueManager.setQueue(p.songIds.map(id => songs.find(s => s.id === id)!), 0)} 
-                onDeletePlaylist={(id) => setPlaylists(p => p.filter(pl => pl.id !== id))} 
-                onCreatePlaylist={() => setIsCreatorOpen(true)} 
-                onSongSelect={(s) => queueManager.setQueue([s], 0)} 
-                currentSongId={currentSong?.id}
-                isPlaying={isPlaying}
-              />
-            )}
+            {activeTab === NavigationTab.Playlists && <PlaylistView playlists={playlists} songs={songs} recentSongs={queue.items.slice(0, 10)} selectedPlaylistId={selectedPlaylistId} onSelectPlaylist={setSelectedPlaylistId} onPlayPlaylist={(p) => queueManager.setQueue(p.songIds.map(id => songs.find(s => s.id === id)!), 0)} onDeletePlaylist={(id) => setPlaylists(p => p.filter(pl => pl.id !== id))} onCreatePlaylist={() => setIsCreatorOpen(true)} onSongSelect={(s) => queueManager.setQueue([s], 0)} currentSongId={currentSong?.id} isPlaying={isPlaying} />}
             {activeTab === NavigationTab.Settings && <SettingsView settings={settings} onUpdate={setSettings} />}
             {activeTab === NavigationTab.About && <AboutView />}
           </MotionDiv>
         </AnimatePresence>
 
         <AnimatePresence>
-          {isNowPlayingOpen && (
-            <NowPlayingView 
-              currentSong={currentSong} 
-              isPlaying={isPlaying} 
-              progress={progress} 
-              duration={currentSong?.duration || 0} 
-              onTogglePlay={handleTogglePlay} 
-              onNext={() => queueManager.next()} 
-              onPrev={() => queueManager.prev()} 
-              onSeek={(val) => engine.seek(val)} 
-              onBack={() => setIsNowPlayingOpen(false)}
-              onUpdateSong={(s) => setSongs(prev => prev.map(o => o.id === s.id ? s : o))}
-            />
-          )}
+          {isNowPlayingOpen && <NowPlayingView currentSong={currentSong} isPlaying={isPlaying} progress={progress} duration={currentSong?.duration || 0} onTogglePlay={handleTogglePlay} onNext={() => queueManager.next()} onPrev={() => queueManager.prev()} onSeek={(val) => engine.seek(val)} onBack={() => setIsNowPlayingOpen(false)} onUpdateSong={(s) => setSongs(prev => prev.map(o => o.id === s.id ? s : o))} />}
         </AnimatePresence>
       </MotionMain>
 
-      <CompactPlayer 
-        currentSong={currentSong} 
-        isPlaying={isPlaying} 
-        onTogglePlay={handleTogglePlay} 
-        onNext={() => queueManager.next()}
-        onPrev={() => queueManager.prev()}
-        progress={progress}
-        duration={currentSong?.duration || 0}
-        onSeek={(val) => engine.seek(val)}
-        onShowLyrics={() => setIsNowPlayingOpen(true)}
-      />
-      
+      <CompactPlayer currentSong={currentSong} isPlaying={isPlaying} onTogglePlay={handleTogglePlay} onNext={() => queueManager.next()} onPrev={() => queueManager.prev()} progress={progress} duration={currentSong?.duration || 0} onSeek={(val) => engine.seek(val)} onShowLyrics={() => setIsNowPlayingOpen(true)} />
       <Equalizer settings={eqSettings} onChange={(s) => { setEqSettings(s); engine.setEQ(s); }} isOpen={isEqOpen} onClose={() => setIsEqOpen(false)} />
       {isCreatorOpen && <SmartPlaylistCreator library={songs} onClose={() => setIsCreatorOpen(false)} onSave={(p) => setPlaylists([...playlists, p])} />}
-      
-      <SmartSearch 
-        isOpen={isSearchOpen} 
-        onClose={() => setIsSearchOpen(false)} 
-        songs={songs} 
-        currentSong={currentSong}
-        onSongSelect={(s) => {
-          queueManager.setQueue([s], 0);
-          setIsSearchOpen(false);
-        }} 
-        onSeeAll={handleSearch}
-      />
+      <SmartSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} songs={songs} currentSong={currentSong} onSongSelect={(s) => { queueManager.setQueue([s], 0); setIsSearchOpen(false); }} onSeeAll={handleSearch} />
     </div>
   );
 };

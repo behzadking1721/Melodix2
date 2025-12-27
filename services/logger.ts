@@ -49,9 +49,10 @@ class MelodixLogger {
     return MelodixLogger.instance;
   }
 
+  // Fix: Ensure the returned cleanup function returns void to comply with React useEffect requirements.
   public subscribe(observer: LogObserver) {
     this.observers.add(observer);
-    return () => this.observers.delete(observer);
+    return () => { this.observers.delete(observer); };
   }
 
   public log(level: LogLevel, category: LogCategory, message: string, context?: any, elapsedMs?: number) {
