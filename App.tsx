@@ -1,267 +1,120 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, AlertCircle, X, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { NavigationTab, Song, Playlist, AppSettings } from './types';
 import Sidebar from './components/Sidebar';
-import CompactPlayer from './components/CompactPlayer';
-import LibraryView from './components/LibraryView';
+import TitleBar from './components/TitleBar';
+import Player from './components/Player';
 import HomeView from './components/HomeView';
+import LibraryView from './components/LibraryView';
 import PlaylistView from './components/PlaylistView';
-import NowPlayingView from './components/NowPlayingView';
-import CollectionsView from './components/CollectionsView';
-import SearchResultsView from './components/SearchResultsView';
 import DownloadsManagerView from './components/DownloadsManagerView';
+import AISettingsView from './components/AISettingsView';
+import SettingsView from './components/SettingsView';
 import ProfileView from './components/ProfileView';
 import BackupRestoreView from './components/BackupRestoreView';
 import DiagnosticsView from './components/DiagnosticsView';
 import ExtensionsView from './components/ExtensionsView';
-import AISettingsView from './components/AISettingsView';
 import DeveloperView from './components/DeveloperView';
 import MultiDeviceSyncView from './components/MultiDeviceSyncView';
+import AboutView from './components/AboutView';
 import AudioEffectsView from './components/AudioEffectsView';
 import VisualizerView from './components/VisualizerView';
-import Equalizer from './components/Equalizer';
-import SettingsView from './components/SettingsView';
-import AboutView from './components/AboutView';
-import SmartPlaylistBuilder from './components/SmartPlaylistBuilder';
-import SmartSearch from './components/SmartSearch';
-import TitleBar from './components/TitleBar';
-import CrashView from './components/CrashView';
-import { Song, NavigationTab, EQSettings, Playlist, AppSettings, QueueState, AudioOutputMode, DownloadTask, AISettings } from './types';
+import LyricsVisualizer from './components/LyricsVisualizer';
+import ShortcutSettingsView from './components/ShortcutSettingsView';
 import { MOCK_SONGS } from './constants';
-import { AudioEngine } from './services/audioEngine';
-import { queueManager } from './services/queueManager';
-import { initDB, cacheItem } from './services/dbService';
-import { logger, LogLevel, LogCategory } from './services/logger';
-import { errorService, MelodixError, ErrorSeverity } from './services/errorService';
-import { THEME_PRESETS, ThemeManager } from './services/themeManager';
 import { enhancementEngine } from './services/enhancementEngine';
-
-const MotionMain = motion.main as any;
-const MotionDiv = motion.div as any;
+import { AnimatePresence } from 'framer-motion';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavigationTab>(NavigationTab.Home);
-  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
-  const [isBuilderOpen, setIsBuilderOpen] = useState(false);
-  const [editingSmartPlaylist, setEditingSmartPlaylist] = useState<Playlist | undefined>(undefined);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isReady, setIsReady] = useState(false);
-  const [isNowPlayingOpen, setIsNowPlayingOpen] = useState(false);
-  const [fatalError, setFatalError] = useState<Error | null>(null);
-  
-  const [songs, setSongs] = useState<Song[]>([]);
-  const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [queue, setQueue] = useState<QueueState>({ items: [], currentIndex: -1, shuffled: false, repeatMode: 'all' });
-  const [tasks, setTasks] = useState<DownloadTask[]>([]);
-  
+  const [songs, setSongs] = useState<Song[]>(MOCK_SONGS);
+  const [playlists] = useState<Playlist[]>([]);
+  const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
+  const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [volume, setVolume] = useState(0.8);
-  const [eqSettings, setEqSettings] = useState<EQSettings>({ enabled: true, mode: 10, bands: new Array(10).fill(0), bass: 0, mid: 0, treble: 0, presets: {} });
   const [isEqOpen, setIsEqOpen] = useState(false);
-  
-  const [settings, setSettings] = useState<AppSettings | null>(null);
-  const engine = useMemo(() => AudioEngine.getInstance(), []);
+  const [tasks, setTasks] = useState([]);
+  const [settings, setSettings] = useState<AppSettings>({
+    autoNormalize: false,
+    gaplessPlayback: true,
+    activeThemeId: 'classic-dark',
+    enableBlur: true,
+    enableAnimations: true,
+    ai: {
+      smartSearch: { enabled: true, fuzzyMatching: true, semanticSearch: false, weights: { title: 80, artist: 60, genre: 40 } },
+      recommendation: { useHistory: true, useMood: true, strength: 70, threshold: 50, diversity: 50 },
+      moodDetection: { analyzeWaveform: true, analyzeLyrics: true, categories: ['Chill', 'Power'] },
+      providerPriority: { lyrics: ['Gemini'], tags: ['Gemini'], covers: ['Gemini'] },
+      privacy: { localInferenceOnly: false, anonymousUsageData: true, cloudSyncEnabled: true }
+    },
+    sync: {
+      autoSync: true,
+      syncOnExit: false,
+      conflictStrategy: 'smart-merge',
+      syncTypes: { playlists: true, settings: true, metadata: true, history: true, stats: true }
+    }
+  });
 
   useEffect(() => {
-    return enhancementEngine.subscribe(setTasks);
-  }, []);
-
-  useEffect(() => {
-    const handleError = (e: ErrorEvent) => {
-      logger.log(LogLevel.FATAL, LogCategory.SYSTEM, 'Unhandled Exception detected', e.error);
-      setFatalError(e.error || new Error(e.error?.message || e.message));
-    };
-    window.addEventListener('error', handleError);
-    return () => window.removeEventListener('error', handleError);
-  }, []);
-
-  useEffect(() => {
-    const startup = async () => {
-      try {
-        await initDB();
-        const savedSongs = localStorage.getItem('melodix-library-v10');
-        const savedPlaylists = localStorage.getItem('melodix-playlists-v6');
-        const savedSettings = localStorage.getItem('melodix-settings-v12');
-
-        setSongs(savedSongs ? JSON.parse(savedSongs) : MOCK_SONGS);
-        setPlaylists(savedPlaylists ? JSON.parse(savedPlaylists) : []);
-        
-        const defaultAI: AISettings = {
-          smartSearch: { enabled: true, fuzzyMatching: true, typoCorrection: true, semanticSearch: false, weights: { title: 80, artist: 60, album: 40, genre: 20, filename: 10 } },
-          recommendation: { enabled: true, useHistory: true, useSimilarity: true, useMood: true, strength: 75, diversity: 40, threshold: 50 },
-          moodDetection: { enabled: true, analyzeWaveform: true, analyzeLyrics: true, categories: ['Happy', 'Sad', 'Energetic', 'Calm'] },
-          enhancement: { retryAttempts: 3, networkLimit: 'unlimited', priority: 'lyrics', autoSaveToFile: false },
-          privacy: { localInferenceOnly: false, anonymousUsageData: true, cloudSyncEnabled: true },
-          providerPriority: { lyrics: ['Gemini', 'Musixmatch', 'Local'], tags: ['MusicBrainz', 'Gemini', 'Discogs'], covers: ['Official', 'Gemini', 'Fanart.tv'] }
-        };
-
-        const defaultSettings: AppSettings = {
-          language: 'en',
-          themeMode: 'dark',
-          activeThemeId: 'classic-dark',
-          uiDensity: 'comfortable',
-          enableBlur: true,
-          enableAnimations: true,
-          miniMode: false,
-          miniProgress: true,
-          miniCover: true,
-          defaultPage: NavigationTab.Home,
-          launchOnBoot: false,
-          launchMinimized: false,
-          showToasts: true,
-          audioDevice: 'default',
-          audioOutputMode: AudioOutputMode.Shared,
-          autoNormalize: true,
-          gaplessPlayback: true,
-          crossfadeSec: 3,
-          targetSampleRate: 44100,
-          musicFolders: [],
-          autoRescan: true,
-          preferEmbeddedTags: true,
-          detectDuplicates: true,
-          groupByAlbumArtist: true,
-          lyricsProvider: 'gemini',
-          tagProvider: 'musicbrainz',
-          autoSaveLyrics: true,
-          preferSyncedLrc: true,
-          saveInsideFile: false,
-          hdCoverArt: true,
-          enableEnhancement: true,
-          autoFixTags: true,
-          autoFetchLyrics: true,
-          autoUpdateCover: true,
-          showStatusIcons: true,
-          taskScheduling: 'playback',
-          ai: defaultAI,
-          sync: {
-            enabled: false,
-            autoSync: true,
-            syncOnExit: false,
-            conflictStrategy: 'smart-merge',
-            syncTypes: {
-              playlists: true,
-              settings: true,
-              metadata: true,
-              history: true,
-              stats: true
-            }
-          }
-        };
-
-        // Recursive merge function to handle deep objects like settings.sync or settings.ai
-        const deepMerge = (target: any, source: any) => {
-          for (const key of Object.keys(source)) {
-            if (source[key] instanceof Object && key in target) {
-              Object.assign(source[key], deepMerge(target[key], source[key]));
-            }
-          }
-          Object.assign(target || {}, source);
-          return target;
-        };
-
-        const parsedSaved = savedSettings ? JSON.parse(savedSettings) : {};
-        const currentSettings = { ...defaultSettings, ...parsedSaved };
-        
-        // Ensure sub-objects are also merged correctly
-        currentSettings.sync = { ...defaultSettings.sync, ...(parsedSaved.sync || {}) };
-        currentSettings.ai = { ...defaultSettings.ai, ...(parsedSaved.ai || {}) };
-        
-        setSettings(currentSettings);
-        
-        const allThemes = [...THEME_PRESETS, ...(currentSettings.customThemes || [])];
-        ThemeManager.applyTheme(allThemes.find(t => t.id === currentSettings.activeThemeId) || THEME_PRESETS[0]);
-        
-        setIsReady(true);
-      } catch (e) {
-        console.error(e);
-      }
-    };
-    startup();
-  }, []);
-
-  useEffect(() => {
-    if (playlists.length > 0) localStorage.setItem('melodix-playlists-v6', JSON.stringify(playlists));
-  }, [playlists]);
-
-  const currentSong = useMemo(() => queue.items[queue.currentIndex] || null, [queue]);
-
-  const handleTogglePlay = () => {
-    if (isPlaying) engine.pause();
-    else engine.resume();
-    setIsPlaying(!isPlaying);
-  };
-
-  const saveSmartPlaylist = (p: Playlist) => {
-    setPlaylists(prev => {
-      const exists = prev.find(pl => pl.id === p.id);
-      if (exists) return prev.map(pl => pl.id === p.id ? p : pl);
-      return [...prev, p];
+    return enhancementEngine.subscribe((newTasks) => {
+      setTasks(newTasks as any);
     });
-  };
+  }, []);
 
-  if (fatalError) return <CrashView error={fatalError} onRestart={() => window.location.reload()} />;
-  if (!isReady || !settings) return null;
+  const handleUpdateSong = (updated: Song) => {
+    setSongs(songs.map(s => s.id === updated.id ? updated : s));
+  };
 
   return (
-    <div className={`flex h-screen w-screen overflow-hidden bg-[var(--mica-bg)] ${settings.enableBlur ? 'backdrop-blur-xl' : ''}`} dir="ltr">
-      <TitleBar onOpenSearch={() => setIsSearchOpen(true)} />
+    <div className="flex h-screen bg-[#0a0a0a] text-white overflow-hidden font-sans select-none">
+      <TitleBar onOpenSearch={() => setActiveTab(NavigationTab.Search)} />
       <Sidebar 
         activeTab={activeTab} 
-        onTabChange={(tab) => { setActiveTab(tab); setSelectedPlaylistId(null); }} 
-        playlists={playlists}
-        activePlaylistId={selectedPlaylistId}
-        onSelectPlaylist={(id) => { setActiveTab(NavigationTab.Playlists); setSelectedPlaylistId(id); }}
+        onTabChange={setActiveTab} 
+        playlists={playlists} 
+        activePlaylistId={activePlaylistId}
+        onSelectPlaylist={(id) => { setActivePlaylistId(id); setActiveTab(NavigationTab.Playlists); }}
       />
-
-      <MotionMain layout className="flex-1 h-full relative overflow-hidden pt-10">
+      
+      <main className="flex-1 relative overflow-hidden pt-10">
         <AnimatePresence mode="wait">
-          <MotionDiv key={activeTab + (selectedPlaylistId || '') + searchQuery} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full">
-            {activeTab === NavigationTab.Home && <HomeView currentSong={currentSong} lyrics={currentSong?.lrcContent || ""} isLoadingLyrics={false} currentTime={progress} onSongSelect={(s) => queueManager.setQueue([s], 0)} recentSongs={queue.items.slice(0, 10)} library={songs} isPlaying={isPlaying} onTogglePlay={handleTogglePlay} />}
-            {activeTab === NavigationTab.Playlists && (
-              <PlaylistView 
-                playlists={playlists} songs={songs} recentSongs={queue.items.slice(0, 10)} 
-                selectedPlaylistId={selectedPlaylistId} onSelectPlaylist={setSelectedPlaylistId} 
-                onPlayPlaylist={(p) => queueManager.setQueue(p.songIds.map(id => songs.find(s => s.id === id)!), 0)} 
-                onDeletePlaylist={(id) => setPlaylists(p => p.filter(pl => pl.id !== id))} 
-                onCreatePlaylist={() => { setEditingSmartPlaylist(undefined); setIsBuilderOpen(true); }} 
-                onEditSmartPlaylist={(p) => { setEditingSmartPlaylist(p); setIsBuilderOpen(true); }}
-                onSongSelect={(s) => queueManager.setQueue([s], 0)} currentSongId={currentSong?.id} isPlaying={isPlaying} 
-                onUpdatePlaylist={saveSmartPlaylist}
-              />
-            )}
-            {activeTab === NavigationTab.AllSongs && <LibraryView songs={songs} onSongSelect={(s) => queueManager.setQueue([s], 0)} onAddNext={(s) => queueManager.addNext(s)} onAddToQueue={(s) => queueManager.addToEnd(s)} currentSongId={currentSong?.id} onUpdateSong={(s) => setSongs(prev => prev.map(o => o.id === s.id ? s : o))} />}
-            {activeTab === NavigationTab.Collections && <CollectionsView songs={songs} onSongSelect={(s) => queueManager.setQueue([s], 0)} currentSongId={currentSong?.id} onPlayPlaylist={(list) => queueManager.setQueue(list, 0)} />}
-            {activeTab === NavigationTab.Search && <SearchResultsView query={searchQuery} songs={songs} playlists={playlists} onSongSelect={(s) => queueManager.setQueue([s], 0)} currentSongId={currentSong?.id} onClear={() => { setSearchQuery(''); setActiveTab(NavigationTab.Home); }} />}
-            {activeTab === NavigationTab.Downloads && <DownloadsManagerView tasks={tasks} />}
-            {activeTab === NavigationTab.AISettings && <AISettingsView settings={settings} onUpdate={setSettings} />}
-            {activeTab === NavigationTab.CloudSync && <MultiDeviceSyncView settings={settings} onUpdate={setSettings} />}
-            {activeTab === NavigationTab.AudioLab && <AudioEffectsView />}
-            {activeTab === NavigationTab.Visualizer && <VisualizerView currentSong={currentSong} isPlaying={isPlaying} />}
-            {activeTab === NavigationTab.Settings && <SettingsView settings={settings} onUpdate={setSettings} />}
-            {activeTab === NavigationTab.About && <AboutView />}
-          </MotionDiv>
+          {activeTab === NavigationTab.Home && <HomeView currentSong={currentSong} library={songs} recentSongs={songs.slice(0, 5)} isPlaying={isPlaying} onTogglePlay={() => setIsPlaying(!isPlaying)} onSongSelect={setCurrentSong} lyrics="" isLoadingLyrics={false} currentTime={progress} />}
+          {activeTab === NavigationTab.AllSongs && <LibraryView songs={songs} onSongSelect={setCurrentSong} currentSongId={currentSong?.id} onUpdateSong={handleUpdateSong} onAddNext={() => {}} onAddToQueue={() => {}} />}
+          {activeTab === NavigationTab.Playlists && <PlaylistView playlists={playlists} songs={songs} recentSongs={songs.slice(0, 5)} selectedPlaylistId={activePlaylistId} onSelectPlaylist={setActivePlaylistId} onPlayPlaylist={() => {}} onDeletePlaylist={() => {}} onCreatePlaylist={() => {}} onSongSelect={setCurrentSong} currentSongId={currentSong?.id} isPlaying={isPlaying} onUpdatePlaylist={() => {}} />}
+          {activeTab === NavigationTab.Downloads && <DownloadsManagerView tasks={tasks} />}
+          {activeTab === NavigationTab.Profile && <ProfileView songs={songs} />}
+          {activeTab === NavigationTab.AISettings && <AISettingsView settings={settings} onUpdate={setSettings} />}
+          {activeTab === NavigationTab.Settings && <SettingsView settings={settings} onUpdate={setSettings} />}
+          {activeTab === NavigationTab.Backup && <BackupRestoreView />}
+          {activeTab === NavigationTab.Diagnostics && <DiagnosticsView currentSong={currentSong} tasksCount={tasks.length} />}
+          {activeTab === NavigationTab.Extensions && <ExtensionsView />}
+          {activeTab === NavigationTab.Developer && <DeveloperView />}
+          {activeTab === NavigationTab.CloudSync && <MultiDeviceSyncView settings={settings} onUpdate={setSettings} />}
+          {activeTab === NavigationTab.About && <AboutView />}
+          {activeTab === NavigationTab.AudioLab && <AudioEffectsView />}
+          {activeTab === NavigationTab.Visualizer && <VisualizerView currentSong={currentSong} isPlaying={isPlaying} />}
+          {activeTab === NavigationTab.LyricsVisualizer && <LyricsVisualizer currentSong={currentSong} currentTime={progress} isPlaying={isPlaying} />}
+          {activeTab === NavigationTab.Shortcuts && <ShortcutSettingsView />}
         </AnimatePresence>
+      </main>
 
-        <AnimatePresence>
-          {isNowPlayingOpen && <NowPlayingView currentSong={currentSong} isPlaying={isPlaying} progress={progress} duration={currentSong?.duration || 0} onTogglePlay={handleTogglePlay} onNext={() => queueManager.next()} onPrev={() => queueManager.prev()} onSeek={(val) => engine.seek(val)} onBack={() => setIsNowPlayingOpen(false)} onUpdateSong={(s) => setSongs(prev => prev.map(o => o.id === s.id ? s : o))} />}
-        </AnimatePresence>
-      </MotionMain>
-
-      <CompactPlayer currentSong={currentSong} isPlaying={isPlaying} onTogglePlay={handleTogglePlay} onNext={() => queueManager.next()} onPrev={() => queueManager.prev()} progress={progress} duration={currentSong?.duration || 0} onSeek={(val) => engine.seek(val)} onShowLyrics={() => setIsNowPlayingOpen(true)} />
-      
-      {isBuilderOpen && (
-        <SmartPlaylistBuilder 
-          library={songs} 
-          initialPlaylist={editingSmartPlaylist}
-          onClose={() => setIsBuilderOpen(false)} 
-          onSave={saveSmartPlaylist} 
-        />
-      )}
-      
-      <SmartSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} songs={songs} currentSong={currentSong} onSongSelect={(s) => { queueManager.setQueue([s], 0); setIsSearchOpen(false); }} onSeeAll={(q) => { setSearchQuery(q); setActiveTab(NavigationTab.Search); }} />
+      <Player 
+        currentSong={currentSong} 
+        isPlaying={isPlaying} 
+        onTogglePlay={() => setIsPlaying(!isPlaying)}
+        progress={progress}
+        duration={currentSong?.duration || 0}
+        onSeek={setProgress}
+        volume={volume}
+        onVolumeChange={setVolume}
+        onToggleEq={() => setIsEqOpen(!isEqOpen)}
+        isEqOpen={isEqOpen}
+        onNext={() => {}}
+        onPrev={() => {}}
+        onToggleQueue={() => {}}
+      />
     </div>
   );
 };
