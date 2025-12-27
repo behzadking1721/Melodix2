@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { 
-  Library, Settings, Info, Home, ListMusic, Zap, LayoutGrid, Download, User, ShieldCheck, Activity, Puzzle, Brain, TerminalSquare, Cloud, Sliders, Eye, Mic2, Keyboard
+  Library, Settings, Info, Home, ListMusic, Zap, LayoutGrid, Download, User, ShieldCheck, Activity, Puzzle, Brain, TerminalSquare, Cloud, Sliders, Eye, Mic2, Keyboard, Shield, HardDrive
 } from 'lucide-react';
 import { NavigationTab } from './types';
 
@@ -55,11 +55,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
         <NavItem icon={Download} label="Downloads" tab={NavigationTab.Downloads} activeTab={activeTab} onTabChange={onTabChange} />
         <NavItem icon={Cloud} label="Cloud Sync" tab={NavigationTab.CloudSync} activeTab={activeTab} onTabChange={onTabChange} />
         <NavItem icon={ShieldCheck} label="SafeBox" tab={NavigationTab.Backup} activeTab={activeTab} onTabChange={onTabChange} />
+        <NavItem icon={HardDrive} label="Cache Manager" tab={NavigationTab.CacheManager} activeTab={activeTab} onTabChange={onTabChange} />
         <NavItem icon={Activity} label="Diagnostics" tab={NavigationTab.Diagnostics} activeTab={activeTab} onTabChange={onTabChange} />
         <NavItem icon={Brain} label="Neural Hub" tab={NavigationTab.AISettings} activeTab={activeTab} onTabChange={onTabChange} />
         <NavItem icon={TerminalSquare} label="Dev Console" tab={NavigationTab.Developer} activeTab={activeTab} onTabChange={onTabChange} />
         <NavItem icon={Puzzle} label="Extensions" tab={NavigationTab.Extensions} activeTab={activeTab} onTabChange={onTabChange} />
         <NavItem icon={Keyboard} label="Shortcuts" tab={NavigationTab.Shortcuts} activeTab={activeTab} onTabChange={onTabChange} />
+        <NavItem icon={Shield} label="Accessibility" tab={NavigationTab.Accessibility} activeTab={activeTab} onTabChange={onTabChange} />
       </div>
 
       <div className="pt-6 border-t border-white/5 space-y-2 mt-auto">

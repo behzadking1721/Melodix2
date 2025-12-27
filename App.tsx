@@ -21,6 +21,8 @@ import AudioEffectsView from './components/AudioEffectsView';
 import VisualizerView from './components/VisualizerView';
 import LyricsVisualizer from './components/LyricsVisualizer';
 import ShortcutSettingsView from './components/ShortcutSettingsView';
+import AccessibilityView from './components/AccessibilityView';
+import CacheManagerView from './components/CacheManagerView';
 import { MOCK_SONGS } from './constants';
 import { enhancementEngine } from './services/enhancementEngine';
 import { AnimatePresence } from 'framer-motion';
@@ -54,6 +56,17 @@ const App: React.FC = () => {
       syncOnExit: false,
       conflictStrategy: 'smart-merge',
       syncTypes: { playlists: true, settings: true, metadata: true, history: true, stats: true }
+    },
+    accessibility: {
+      highContrast: false,
+      highContrastTheme: 'black-yellow',
+      reduceMotion: false,
+      screenReaderOptimized: false,
+      textScale: 100,
+      uiScale: 100,
+      fontFamily: 'default',
+      colorBlindnessMode: 'none',
+      colorBlindnessIntensity: 50
     }
   });
 
@@ -68,14 +81,15 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#0a0a0a] text-white overflow-hidden font-sans select-none">
+    <div className={`flex h-screen bg-[#0a0a0a] text-white overflow-hidden font-sans select-none ${settings.accessibility.reduceMotion ? 'no-animations' : ''}`}>
       <TitleBar onOpenSearch={() => setActiveTab(NavigationTab.Search)} />
+      {/* Fix: Pass missing required props to Sidebar */}
       <Sidebar 
         activeTab={activeTab} 
         onTabChange={setActiveTab} 
-        playlists={playlists} 
+        playlists={playlists}
         activePlaylistId={activePlaylistId}
-        onSelectPlaylist={(id) => { setActivePlaylistId(id); setActiveTab(NavigationTab.Playlists); }}
+        onSelectPlaylist={setActivePlaylistId}
       />
       
       <main className="flex-1 relative overflow-hidden pt-10">
@@ -97,6 +111,8 @@ const App: React.FC = () => {
           {activeTab === NavigationTab.Visualizer && <VisualizerView currentSong={currentSong} isPlaying={isPlaying} />}
           {activeTab === NavigationTab.LyricsVisualizer && <LyricsVisualizer currentSong={currentSong} currentTime={progress} isPlaying={isPlaying} />}
           {activeTab === NavigationTab.Shortcuts && <ShortcutSettingsView />}
+          {activeTab === NavigationTab.Accessibility && <AccessibilityView settings={settings} onUpdate={setSettings} />}
+          {activeTab === NavigationTab.CacheManager && <CacheManagerView />}
         </AnimatePresence>
       </main>
 
