@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Library, Settings, Info, Home, ListMusic, Zap, LayoutGrid, Download, User
+  Library, Settings, Info, Home, ListMusic, Zap, LayoutGrid, Download, User, ShieldCheck
 } from 'lucide-react';
 import { NavigationTab, Playlist, DownloadTask } from '../types';
 import { enhancementEngine } from '../services/enhancementEngine';
@@ -62,6 +62,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <NavItem icon={Library} label="Library" tab={NavigationTab.AllSongs} />
         <NavItem icon={ListMusic} label="Playlists" tab={NavigationTab.Playlists} />
         <NavItem icon={Download} label="Downloads" tab={NavigationTab.Downloads} />
+        <NavItem icon={ShieldCheck} label="SafeBox" tab={NavigationTab.Backup} />
       </div>
 
       <div className="px-4 mb-4">

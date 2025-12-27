@@ -25,6 +25,25 @@ export interface Song {
   coverStatus?: 'none' | 'partial' | 'full';
 }
 
+export interface BackupMetadata {
+  id: string;
+  timestamp: number;
+  version: string;
+  type: 'full' | 'partial';
+  size: number;
+  sections: string[];
+  itemCount: number;
+  checksum: string;
+}
+
+export interface CloudProvider {
+  id: 'onedrive' | 'gdrive' | 'dropbox';
+  name: string;
+  connected: boolean;
+  lastSync?: number;
+  accountName?: string;
+}
+
 export interface AlbumViewModel {
   name: string;
   artist: string;
@@ -148,6 +167,8 @@ export interface AppSettings {
   isDefaultPlayer: boolean;
   minFileSizeMB: number;
   minDurationSec: number;
+  backupFrequency: 'never' | 'daily' | 'weekly' | 'monthly' | 'on-exit';
+  autoCleanupBackups: boolean;
 }
 
 export type PlaylistViewMode = 'grid' | 'list';
@@ -160,7 +181,8 @@ export enum NavigationTab {
   Search = 'search',
   Queue = 'queue',
   Downloads = 'downloads',
-  Profile = 'profile', // New
+  Profile = 'profile',
+  Backup = 'backup', // New
   Settings = 'settings',
   About = 'about'
 }
