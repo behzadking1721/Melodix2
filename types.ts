@@ -25,6 +25,40 @@ export interface Song {
   coverStatus?: 'none' | 'partial' | 'full';
 }
 
+export type ConditionOperator = 
+  | 'is' | 'is-not' | 'contains' | 'not-contains' 
+  | 'greater' | 'less' | 'starts' | 'ends';
+
+export type FilterField = 
+  | 'title' | 'artist' | 'album' | 'genre' | 'year' 
+  | 'duration' | 'playCount' | 'dateAdded' | 'lastPlayed'
+  | 'hasLyrics' | 'mood' | 'bitrate';
+
+export interface SmartRule {
+  id: string;
+  field: FilterField;
+  operator: ConditionOperator;
+  value: string | number | boolean;
+}
+
+export interface SmartRuleGroup {
+  id: string;
+  logic: 'and' | 'or';
+  rules: (SmartRule | SmartRuleGroup)[];
+}
+
+export interface Playlist {
+  id: string;
+  name: string;
+  songIds: string[];
+  coverUrl?: string;
+  dateCreated: number;
+  lastModified: number;
+  isSystem?: boolean;
+  isSmart?: boolean;
+  smartRules?: SmartRuleGroup;
+}
+
 export type ExtensionType = 
   | 'lyrics-provider' 
   | 'tag-provider' 
@@ -34,7 +68,6 @@ export type ExtensionType =
   | 'ui-mod' 
   | 'automation';
 
-// Added missing MelodixExtension interface
 export interface MelodixExtension {
   id: string;
   name: string;
@@ -47,7 +80,6 @@ export interface MelodixExtension {
   hasSettings: boolean;
 }
 
-// Added missing AISettings interface
 export interface AISettings {
   smartSearch: {
     enabled: boolean;
@@ -218,13 +250,12 @@ export enum NavigationTab {
   Extensions = 'extensions',
   AISettings = 'ai-settings',
   Developer = 'developer',
-  CloudSync = 'cloud-sync', // New
+  CloudSync = 'cloud-sync',
   Settings = 'settings',
   About = 'about'
 }
 
 export type PlaylistViewMode = 'grid' | 'list';
-export interface Playlist { id: string; name: string; songIds: string[]; coverUrl?: string; dateCreated: number; lastModified: number; isSystem?: boolean; }
 export interface QueueState { items: Song[]; currentIndex: number; shuffled: boolean; repeatMode: 'none' | 'one' | 'all'; }
 export interface EQSettings { bass: number; mid: number; treble: number; }
 export enum AudioOutputMode { Shared = 'shared', Exclusive = 'exclusive' }
