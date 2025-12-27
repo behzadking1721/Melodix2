@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Library, Settings, Info, Home, ListMusic, Zap, LayoutGrid, Download, User, ShieldCheck, Activity, Puzzle, Brain, TerminalSquare, Cloud
+  Library, Settings, Info, Home, ListMusic, Zap, LayoutGrid, Download, User, ShieldCheck, Activity, Puzzle, Brain, TerminalSquare, Cloud, Sliders
 } from 'lucide-react';
 import { NavigationTab, Playlist, DownloadTask } from '../types';
 import { enhancementEngine } from '../services/enhancementEngine';
@@ -55,12 +55,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         <h1 className="text-xl font-black tracking-tighter text-white">Melodix</h1>
       </div>
 
-      <div className="space-y-2 mb-10 overflow-y-auto custom-scrollbar pr-1">
+      <div className="space-y-1 mb-10 overflow-y-auto custom-scrollbar pr-1">
         <NavItem icon={Home} label="Home" tab={NavigationTab.Home} />
         <NavItem icon={User} label="Profile" tab={NavigationTab.Profile} />
         <NavItem icon={LayoutGrid} label="Collections" tab={NavigationTab.Collections} />
         <NavItem icon={Library} label="Library" tab={NavigationTab.AllSongs} />
         <NavItem icon={ListMusic} label="Playlists" tab={NavigationTab.Playlists} />
+        <NavItem icon={Sliders} label="Audio Lab" tab={NavigationTab.AudioLab} />
         <NavItem icon={Download} label="Downloads" tab={NavigationTab.Downloads} />
         <NavItem icon={Cloud} label="Cloud Sync" tab={NavigationTab.CloudSync} />
         <NavItem icon={ShieldCheck} label="SafeBox" tab={NavigationTab.Backup} />

@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, AlertCircle, X, Sparkles } from 'lucide-react';
@@ -18,10 +19,11 @@ import ExtensionsView from './components/ExtensionsView';
 import AISettingsView from './components/AISettingsView';
 import DeveloperView from './components/DeveloperView';
 import MultiDeviceSyncView from './components/MultiDeviceSyncView';
+import AudioEffectsView from './components/AudioEffectsView'; // New
 import Equalizer from './components/Equalizer';
 import SettingsView from './components/SettingsView';
 import AboutView from './components/AboutView';
-import SmartPlaylistBuilder from './components/SmartPlaylistBuilder'; // New
+import SmartPlaylistBuilder from './components/SmartPlaylistBuilder';
 import SmartSearch from './components/SmartSearch';
 import TitleBar from './components/TitleBar';
 import CrashView from './components/CrashView';
@@ -57,7 +59,8 @@ const App: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [volume, setVolume] = useState(0.8);
-  const [eqSettings, setEqSettings] = useState<EQSettings>({ bass: 0, mid: 0, treble: 0 });
+  // Fixed: Updated initial eqSettings to include bass, mid, and treble
+  const [eqSettings, setEqSettings] = useState<EQSettings>({ enabled: true, mode: 10, bands: new Array(10).fill(0), bass: 0, mid: 0, treble: 0, presets: {} });
   const [isEqOpen, setIsEqOpen] = useState(false);
   
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -70,7 +73,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleError = (e: ErrorEvent) => {
       logger.log(LogLevel.FATAL, LogCategory.SYSTEM, 'Unhandled Exception detected', e.error);
-      setFatalError(e.error || new Error(e.message));
+      setFatalError(e.error || new Error(e.error?.message || e.message));
     };
     window.addEventListener('error', handleError);
     return () => window.removeEventListener('error', handleError);
@@ -166,6 +169,7 @@ const App: React.FC = () => {
             {activeTab === NavigationTab.Downloads && <DownloadsManagerView tasks={tasks} />}
             {activeTab === NavigationTab.AISettings && <AISettingsView settings={settings} onUpdate={setSettings} />}
             {activeTab === NavigationTab.CloudSync && <MultiDeviceSyncView settings={settings} onUpdate={setSettings} />}
+            {activeTab === NavigationTab.AudioLab && <AudioEffectsView />}
             {activeTab === NavigationTab.Settings && <SettingsView settings={settings} onUpdate={setSettings} />}
             {activeTab === NavigationTab.About && <AboutView />}
           </MotionDiv>

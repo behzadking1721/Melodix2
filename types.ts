@@ -1,4 +1,5 @@
 
+
 export interface TagSnapshot {
   id: string;
   timestamp: number;
@@ -75,27 +76,38 @@ export interface Playlist {
   smartRules?: SmartRuleGroup;
 }
 
-export type ExtensionType = 
-  | 'lyrics-provider' 
-  | 'tag-provider' 
-  | 'cover-provider' 
-  | 'audio-effect' 
-  | 'visualization' 
-  | 'ui-mod' 
-  | 'automation';
-
-export interface MelodixExtension {
-  id: string;
-  name: string;
-  version: string;
-  author: string;
-  description: string;
-  type: ExtensionType;
-  status: 'enabled' | 'disabled';
-  permissions: string[];
-  hasSettings: boolean;
+// Added bass, mid, treble properties to EQSettings
+export interface EQSettings {
+  enabled: boolean;
+  mode: 10 | 15 | 31;
+  bands: number[];
+  bass: number;
+  mid: number;
+  treble: number;
+  presets: Record<string, number[]>;
 }
 
+export interface AudioEffectSettings {
+  bassBoost: number;
+  trebleBoost: number;
+  clarity: number;
+  warmth: number;
+  reverb: {
+    enabled: boolean;
+    type: 'room' | 'hall' | 'plate' | 'cathedral';
+    size: number;
+    decay: number;
+    mix: number;
+  };
+  spatial: {
+    enabled: boolean;
+    depth: number;
+    width: number;
+    mode: 'headphone' | 'speaker';
+  };
+}
+
+// Added missing AISettings interface
 export interface AISettings {
   smartSearch: {
     enabled: boolean;
@@ -127,7 +139,7 @@ export interface AISettings {
   };
   enhancement: {
     retryAttempts: number;
-    networkLimit: 'unlimited' | 'wifi-only' | 'off';
+    networkLimit: 'unlimited' | 'wifi-only' | 'none';
     priority: 'lyrics' | 'tags' | 'covers';
     autoSaveToFile: boolean;
   };
@@ -141,49 +153,6 @@ export interface AISettings {
     tags: string[];
     covers: string[];
   };
-}
-
-export interface MelodixScript {
-  id: string;
-  name: string;
-  code: string;
-  lastRun?: number;
-  status: 'idle' | 'running' | 'error';
-}
-
-export interface AutomationRule {
-  id: string;
-  name: string;
-  trigger: 'track-start' | 'metadata-missing' | 'mood-change' | 'low-res-cover';
-  condition: string;
-  action: string;
-  enabled: boolean;
-}
-
-export interface CloudDevice {
-  id: string;
-  name: string;
-  type: 'desktop' | 'mobile' | 'tablet' | 'web';
-  lastSync: number;
-  status: 'online' | 'offline' | 'syncing';
-  os: string;
-}
-
-export interface SyncEvent {
-  id: string;
-  timestamp: number;
-  type: 'upload' | 'download' | 'merge';
-  dataType: string;
-  status: 'success' | 'failed' | 'pending';
-  itemCount: number;
-}
-
-export interface SyncConflict {
-  id: string;
-  type: 'settings' | 'playlist' | 'metadata';
-  description: string;
-  localTime: number;
-  cloudTime: number;
 }
 
 export interface AppSettings {
@@ -268,12 +237,12 @@ export enum NavigationTab {
   Developer = 'developer',
   CloudSync = 'cloud-sync',
   Settings = 'settings',
-  About = 'about'
+  About = 'about',
+  AudioLab = 'audio-lab'
 }
 
 export type PlaylistViewMode = 'grid' | 'list';
 export interface QueueState { items: Song[]; currentIndex: number; shuffled: boolean; repeatMode: 'none' | 'one' | 'all'; }
-export interface EQSettings { bass: number; mid: number; treble: number; }
 export enum AudioOutputMode { Shared = 'shared', Exclusive = 'exclusive' }
 export interface ThemeDefinition { id: string; name: string; base: 'light' | 'dark'; background: string; surface: string; card: string; primary: string; secondary: string; accent: string; textPrimary: string; textSecondary: string; border: string; }
 export interface BackupMetadata { id: string; timestamp: number; version: string; type: 'full' | 'partial'; size: number; sections: string[]; itemCount: number; checksum: string; }
@@ -283,3 +252,63 @@ export interface ArtistViewModel { name: string; albums: AlbumViewModel[]; songC
 export type TaskType = 'lyrics' | 'tags' | 'cover' | 'full-enhancement';
 export type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'paused';
 export interface DownloadTask { id: string; songId: string; songTitle: string; artist: string; coverUrl: string; type: TaskType; status: TaskStatus; progress: number; error?: string; retryCount: number; timestamp: number; }
+
+// Added missing extension types
+export type ExtensionType = 'lyrics-provider' | 'audio-effect' | 'visualization' | 'automation' | 'ui-mod' | 'tag-provider';
+
+export interface MelodixExtension {
+  id: string;
+  name: string;
+  version: string;
+  author: string;
+  description: string;
+  type: ExtensionType;
+  status: 'enabled' | 'disabled';
+  permissions: string[];
+  hasSettings: boolean;
+}
+
+// Added missing scripting types
+export interface MelodixScript {
+  id: string;
+  name: string;
+  code: string;
+  status: 'idle' | 'running';
+  lastRun?: number;
+}
+
+export interface AutomationRule {
+  id: string;
+  name: string;
+  trigger: string;
+  condition: string;
+  action: string;
+  enabled: boolean;
+}
+
+// Added missing sync types
+export interface CloudDevice {
+  id: string;
+  name: string;
+  type: 'desktop' | 'mobile' | 'tablet';
+  lastSync: number;
+  status: 'online' | 'offline';
+  os: string;
+}
+
+export interface SyncEvent {
+  id: string;
+  timestamp: number;
+  type: 'upload' | 'download' | 'merge';
+  dataType: string;
+  status: 'success' | 'failed';
+  itemCount: number;
+}
+
+export interface SyncConflict {
+  id: string;
+  songId: string;
+  localTimestamp: number;
+  remoteTimestamp: number;
+  resolved: boolean;
+}
