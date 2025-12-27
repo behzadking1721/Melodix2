@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { NavigationTab, Song, Playlist, AppSettings } from './types';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { NavigationTab, Song, Playlist, AppSettings, AudioOutputMode } from './types';
 import Sidebar from './components/Sidebar';
 import TitleBar from './components/TitleBar';
 import Player from './components/Player';
@@ -25,12 +25,14 @@ import AccessibilityView from './components/AccessibilityView';
 import CacheManagerView from './components/CacheManagerView';
 import { MOCK_SONGS } from './constants';
 import { enhancementEngine } from './services/enhancementEngine';
+import { AudioEngine } from './services/audioEngine';
+import { queueManager } from './services/queueManager';
 import { AnimatePresence } from 'framer-motion';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavigationTab>(NavigationTab.Home);
   const [songs, setSongs] = useState<Song[]>(MOCK_SONGS);
-  const [playlists] = useState<Playlist[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -38,6 +40,10 @@ const App: React.FC = () => {
   const [volume, setVolume] = useState(0.8);
   const [isEqOpen, setIsEqOpen] = useState(false);
   const [tasks, setTasks] = useState([]);
+  
+  const engine = AudioEngine.getInstance();
+  const progressIntervalRef = useRef<number>(0);
+
   const [settings, setSettings] = useState<AppSettings>({
     autoNormalize: false,
     gaplessPlayback: true,
@@ -70,6 +76,46 @@ const App: React.FC = () => {
     }
   });
 
+  // --- Audio Lifecycle Control ---
+  useEffect(() => {
+    if (isPlaying && currentSong) {
+      progressIntervalRef.current = window.setInterval(() => {
+        const audioEl = engine.getActiveElement();
+        if (audioEl) setProgress(audioEl.currentTime);
+      }, 100);
+    } else {
+      window.clearInterval(progressIntervalRef.current);
+    }
+    return () => window.clearInterval(progressIntervalRef.current);
+  }, [isPlaying, currentSong]);
+
+  const handleTogglePlay = useCallback(() => {
+    if (!currentSong && songs.length > 0) {
+      handleSongSelect(songs[0]);
+      return;
+    }
+    if (isPlaying) engine.pause();
+    else engine.resume();
+    setIsPlaying(!isPlaying);
+  }, [isPlaying, currentSong, songs]);
+
+  const handleSongSelect = useCallback((song: Song) => {
+    setCurrentSong(song);
+    setIsPlaying(true);
+    setProgress(0);
+    engine.play(song);
+  }, []);
+
+  const handleSeek = (val: number) => {
+    setProgress(val);
+    engine.seek(val);
+  };
+
+  const handleVolumeChange = (val: number) => {
+    setVolume(val);
+    engine.setVolume(val);
+  };
+
   useEffect(() => {
     return enhancementEngine.subscribe((newTasks) => {
       setTasks(newTasks as any);
@@ -80,23 +126,73 @@ const App: React.FC = () => {
     setSongs(songs.map(s => s.id === updated.id ? updated : s));
   };
 
+  const handleUpdatePlaylist = (updated: Playlist) => {
+    setPlaylists(playlists.map(p => p.id === updated.id ? updated : p));
+  };
+
   return (
     <div className={`flex h-screen bg-[#0a0a0a] text-white overflow-hidden font-sans select-none ${settings.accessibility.reduceMotion ? 'no-animations' : ''}`}>
       <TitleBar onOpenSearch={() => setActiveTab(NavigationTab.Search)} />
-      {/* Fix: Pass missing required props to Sidebar */}
+      
+      {/* 
+        Fix: Pass missing required props to Sidebar component. 
+        Included playlists, activePlaylistId and a selection handler that navigates to the playlist view.
+      */}
       <Sidebar 
         activeTab={activeTab} 
         onTabChange={setActiveTab} 
         playlists={playlists}
         activePlaylistId={activePlaylistId}
-        onSelectPlaylist={setActivePlaylistId}
+        onSelectPlaylist={(id) => {
+          setActivePlaylistId(id);
+          setActiveTab(NavigationTab.Playlists);
+        }}
       />
       
       <main className="flex-1 relative overflow-hidden pt-10">
         <AnimatePresence mode="wait">
-          {activeTab === NavigationTab.Home && <HomeView currentSong={currentSong} library={songs} recentSongs={songs.slice(0, 5)} isPlaying={isPlaying} onTogglePlay={() => setIsPlaying(!isPlaying)} onSongSelect={setCurrentSong} lyrics="" isLoadingLyrics={false} currentTime={progress} />}
-          {activeTab === NavigationTab.AllSongs && <LibraryView songs={songs} onSongSelect={setCurrentSong} currentSongId={currentSong?.id} onUpdateSong={handleUpdateSong} onAddNext={() => {}} onAddToQueue={() => {}} />}
-          {activeTab === NavigationTab.Playlists && <PlaylistView playlists={playlists} songs={songs} recentSongs={songs.slice(0, 5)} selectedPlaylistId={activePlaylistId} onSelectPlaylist={setActivePlaylistId} onPlayPlaylist={() => {}} onDeletePlaylist={() => {}} onCreatePlaylist={() => {}} onSongSelect={setCurrentSong} currentSongId={currentSong?.id} isPlaying={isPlaying} onUpdatePlaylist={() => {}} />}
+          {activeTab === NavigationTab.Home && (
+            <HomeView 
+              currentSong={currentSong} 
+              library={songs} 
+              recentSongs={songs.slice(0, 5)} 
+              isPlaying={isPlaying} 
+              onTogglePlay={handleTogglePlay} 
+              onSongSelect={handleSongSelect} 
+              lyrics={currentSong?.lrcContent || ""} 
+              isLoadingLyrics={false} 
+              currentTime={progress} 
+            />
+          )}
+          {activeTab === NavigationTab.AllSongs && (
+            <LibraryView 
+              songs={songs} 
+              onSongSelect={handleSongSelect} 
+              currentSongId={currentSong?.id} 
+              onUpdateSong={handleUpdateSong} 
+              onAddNext={(s) => queueManager.addNext(s)} 
+              onAddToQueue={(s) => queueManager.addToEnd(s)} 
+            />
+          )}
+          {activeTab === NavigationTab.Playlists && (
+            <PlaylistView 
+              playlists={playlists} 
+              songs={songs} 
+              recentSongs={songs.slice(0, 5)} 
+              selectedPlaylistId={activePlaylistId} 
+              onSelectPlaylist={setActivePlaylistId} 
+              onPlayPlaylist={(p) => { 
+                const pSongs = p.songIds.map(id => songs.find(s => s.id === id)).filter(s => s) as Song[];
+                if (pSongs.length > 0) handleSongSelect(pSongs[0]);
+              }} 
+              onDeletePlaylist={(id) => setPlaylists(playlists.filter(p => p.id !== id))} 
+              onCreatePlaylist={() => setActiveTab(NavigationTab.Search)} 
+              onSongSelect={handleSongSelect} 
+              currentSongId={currentSong?.id} 
+              isPlaying={isPlaying} 
+              onUpdatePlaylist={handleUpdatePlaylist} 
+            />
+          )}
           {activeTab === NavigationTab.Downloads && <DownloadsManagerView tasks={tasks} />}
           {activeTab === NavigationTab.Profile && <ProfileView songs={songs} />}
           {activeTab === NavigationTab.AISettings && <AISettingsView settings={settings} onUpdate={setSettings} />}
@@ -119,12 +215,12 @@ const App: React.FC = () => {
       <Player 
         currentSong={currentSong} 
         isPlaying={isPlaying} 
-        onTogglePlay={() => setIsPlaying(!isPlaying)}
+        onTogglePlay={handleTogglePlay}
         progress={progress}
         duration={currentSong?.duration || 0}
-        onSeek={setProgress}
+        onSeek={handleSeek}
         volume={volume}
-        onVolumeChange={setVolume}
+        onVolumeChange={handleVolumeChange}
         onToggleEq={() => setIsEqOpen(!isEqOpen)}
         isEqOpen={isEqOpen}
         onNext={() => {}}

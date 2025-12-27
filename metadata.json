@@ -1,9 +1,9 @@
 {
-  "name": "Melodix Music Player",
-  "identity": "Melodix.MusicPlayer.App",
+  "name": "Melodix AI Music Player",
+  "identity": "Melodix.MusicPlayer.Core",
   "publisher": "CN=MelodixLabs",
-  "version": "5.0.0.0",
-  "description": "Professional high-performance music player with advanced Gemini AI integration.",
+  "version": "6.0.42.0",
+  "description": "Enterprise-grade high-performance music player with integrated Gemini Pro AI for metadata enhancement and synced lyrics.",
   "requestFramePermissions": [
     "microphone",
     "camera"
@@ -11,6 +11,12 @@
   "capabilities": [
     "musicLibrary",
     "internetClient",
-    "backgroundMediaPlayback"
-  ]
+    "backgroundMediaPlayback",
+    "privateNetworkClientServer"
+  ],
+  "visualElements": {
+    "displayName": "Melodix AI",
+    "description": "Professional Audiophile Experience",
+    "backgroundColor": "#0a0a0a"
+  }
 }
