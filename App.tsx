@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, AlertCircle, X, Sparkles } from 'lucide-react';
@@ -19,7 +18,8 @@ import ExtensionsView from './components/ExtensionsView';
 import AISettingsView from './components/AISettingsView';
 import DeveloperView from './components/DeveloperView';
 import MultiDeviceSyncView from './components/MultiDeviceSyncView';
-import AudioEffectsView from './components/AudioEffectsView'; // New
+import AudioEffectsView from './components/AudioEffectsView';
+import VisualizerView from './components/VisualizerView'; // New
 import Equalizer from './components/Equalizer';
 import SettingsView from './components/SettingsView';
 import AboutView from './components/AboutView';
@@ -59,7 +59,6 @@ const App: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [volume, setVolume] = useState(0.8);
-  // Fixed: Updated initial eqSettings to include bass, mid, and treble
   const [eqSettings, setEqSettings] = useState<EQSettings>({ enabled: true, mode: 10, bands: new Array(10).fill(0), bass: 0, mid: 0, treble: 0, presets: {} });
   const [isEqOpen, setIsEqOpen] = useState(false);
   
@@ -170,6 +169,7 @@ const App: React.FC = () => {
             {activeTab === NavigationTab.AISettings && <AISettingsView settings={settings} onUpdate={setSettings} />}
             {activeTab === NavigationTab.CloudSync && <MultiDeviceSyncView settings={settings} onUpdate={setSettings} />}
             {activeTab === NavigationTab.AudioLab && <AudioEffectsView />}
+            {activeTab === NavigationTab.Visualizer && <VisualizerView currentSong={currentSong} isPlaying={isPlaying} />}
             {activeTab === NavigationTab.Settings && <SettingsView settings={settings} onUpdate={setSettings} />}
             {activeTab === NavigationTab.About && <AboutView />}
           </MotionDiv>

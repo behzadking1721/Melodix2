@@ -1,9 +1,23 @@
 
-
-export interface TagSnapshot {
-  id: string;
-  timestamp: number;
-  data: Partial<Song>;
+export enum NavigationTab {
+  Home = 'main',
+  Collections = 'collections',
+  Playlists = 'playlist',
+  AllSongs = 'musics',
+  Search = 'search',
+  Queue = 'queue',
+  Downloads = 'downloads',
+  Profile = 'profile',
+  Backup = 'backup',
+  Diagnostics = 'diagnostics',
+  Extensions = 'extensions',
+  AISettings = 'ai-settings',
+  Developer = 'developer',
+  CloudSync = 'cloud-sync',
+  Settings = 'settings',
+  About = 'about',
+  AudioLab = 'audio-lab',
+  Visualizer = 'visualizer'
 }
 
 export interface Song {
@@ -11,57 +25,55 @@ export interface Song {
   title: string;
   artist: string;
   album: string;
-  albumArtist?: string;
   genre: string;
   year: number;
+  duration: number;
+  coverUrl: string;
+  url: string;
+  isFavorite: boolean;
+  dateAdded: number;
+  playCount: number;
+  lyricsStatus?: 'full' | 'partial' | 'none';
+  tagStatus?: 'full' | 'partial' | 'none';
+  coverStatus?: 'full' | 'partial' | 'none';
   trackNumber?: number;
   trackCount?: number;
   discNumber?: number;
-  discCount?: number;
+  lrcContent?: string;
+  hasLyrics?: boolean;
+  albumArtist?: string;
   comment?: string;
   composer?: string;
   publisher?: string;
   isrc?: string;
   bpm?: number;
   lyricsLanguage?: string;
-  duration: number; 
-  coverUrl: string;
-  url: string;
-  isFavorite: boolean;
-  dateAdded: number;
-  playCount: number;
-  lastPlayed?: number;
-  lastUpdated?: number;
-  isSynced?: boolean;
-  hasLyrics?: boolean;
-  lrcContent?: string;
-  replayGain?: number;
-  tagStatus?: 'none' | 'partial' | 'full';
-  lyricsStatus?: 'none' | 'partial' | 'full';
-  coverStatus?: 'none' | 'partial' | 'full';
   tagHistory?: TagSnapshot[];
+  lastUpdated?: number;
+  lastPlayed?: number;
+  replayGain?: number;
 }
 
-export type ConditionOperator = 
-  | 'is' | 'is-not' | 'contains' | 'not-contains' 
-  | 'greater' | 'less' | 'starts' | 'ends';
-
-export type FilterField = 
-  | 'title' | 'artist' | 'album' | 'genre' | 'year' 
-  | 'duration' | 'playCount' | 'dateAdded' | 'lastPlayed'
-  | 'hasLyrics' | 'mood' | 'bitrate';
-
-export interface SmartRule {
+export interface TagSnapshot {
   id: string;
-  field: FilterField;
-  operator: ConditionOperator;
-  value: string | number | boolean;
+  timestamp: number;
+  data: Partial<Song>;
 }
 
-export interface SmartRuleGroup {
-  id: string;
-  logic: 'and' | 'or';
-  rules: (SmartRule | SmartRuleGroup)[];
+export interface ArtistViewModel {
+  name: string;
+  albums: AlbumViewModel[];
+  songCount: number;
+  coverUrl: string;
+}
+
+export interface AlbumViewModel {
+  name: string;
+  artist: string;
+  year: number;
+  coverUrl: string;
+  songs: Song[];
+  totalDuration: number;
 }
 
 export interface Playlist {
@@ -69,17 +81,37 @@ export interface Playlist {
   name: string;
   songIds: string[];
   coverUrl?: string;
-  dateCreated: number;
-  lastModified: number;
   isSystem?: boolean;
   isSmart?: boolean;
   smartRules?: SmartRuleGroup;
+  dateCreated: number;
+  lastModified: number;
 }
 
-// Added bass, mid, treble properties to EQSettings
+export enum AudioOutputMode {
+  Shared = 'shared',
+  Exclusive = 'exclusive'
+}
+
+export type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'paused';
+
+export interface DownloadTask {
+  id: string;
+  songId: string;
+  songTitle: string;
+  artist: string;
+  coverUrl: string;
+  type: string;
+  status: TaskStatus;
+  progress: number;
+  retryCount: number;
+  timestamp: number;
+  error?: string;
+}
+
 export interface EQSettings {
   enabled: boolean;
-  mode: 10 | 15 | 31;
+  mode: number;
   bands: number[];
   bass: number;
   mid: number;
@@ -87,27 +119,60 @@ export interface EQSettings {
   presets: Record<string, number[]>;
 }
 
-export interface AudioEffectSettings {
-  bassBoost: number;
-  trebleBoost: number;
-  clarity: number;
-  warmth: number;
-  reverb: {
+export interface AppSettings {
+  themeMode: 'light' | 'dark';
+  activeThemeId: string;
+  ai: AISettings;
+  sync: {
     enabled: boolean;
-    type: 'room' | 'hall' | 'plate' | 'cathedral';
-    size: number;
-    decay: number;
-    mix: number;
+    autoSync: boolean;
+    syncOnExit: boolean;
+    conflictStrategy: string;
+    syncTypes: {
+      playlists: boolean;
+      settings: boolean;
+      metadata: boolean;
+      history: boolean;
+      stats: boolean;
+    };
   };
-  spatial: {
-    enabled: boolean;
-    depth: number;
-    width: number;
-    mode: 'headphone' | 'speaker';
-  };
+  enableBlur?: boolean;
+  enableAnimations?: boolean;
+  miniMode?: boolean;
+  miniProgress?: boolean;
+  miniCover?: boolean;
+  language?: string;
+  defaultPage?: NavigationTab;
+  launchOnBoot?: boolean;
+  launchMinimized?: boolean;
+  showToasts?: boolean;
+  uiDensity?: 'comfortable' | 'compact';
+  audioDevice?: string;
+  audioOutputMode?: AudioOutputMode;
+  autoNormalize?: boolean;
+  gaplessPlayback?: boolean;
+  crossfadeSec?: number;
+  targetSampleRate?: number;
+  musicFolders: string[];
+  autoRescan?: boolean;
+  preferEmbeddedTags?: boolean;
+  detectDuplicates?: boolean;
+  groupByAlbumArtist?: boolean;
+  lyricsProvider?: string;
+  tagProvider?: string;
+  autoSaveLyrics?: boolean;
+  preferSyncedLrc?: boolean;
+  saveInsideFile?: boolean;
+  hdCoverArt?: boolean;
+  enableEnhancement?: boolean;
+  autoFixTags?: boolean;
+  autoFetchLyrics?: boolean;
+  autoUpdateCover?: boolean;
+  showStatusIcons?: boolean;
+  taskScheduling?: 'playback' | 'idle' | 'manual';
+  customThemes?: ThemeDefinition[];
 }
 
-// Added missing AISettings interface
 export interface AISettings {
   smartSearch: {
     enabled: boolean;
@@ -139,7 +204,7 @@ export interface AISettings {
   };
   enhancement: {
     retryAttempts: number;
-    networkLimit: 'unlimited' | 'wifi-only' | 'none';
+    networkLimit: 'unlimited' | 'cellular' | 'none';
     priority: 'lyrics' | 'tags' | 'covers';
     autoSaveToFile: boolean;
   };
@@ -155,106 +220,46 @@ export interface AISettings {
   };
 }
 
-export interface AppSettings {
-  language: 'en' | 'fa';
-  launchOnBoot: boolean;
-  launchMinimized: boolean;
-  defaultPage: string;
-  showToasts: boolean;
-  themeMode: 'auto' | 'light' | 'dark' | 'custom';
-  activeThemeId: string;
-  customThemes: ThemeDefinition[];
-  accentColor: string;
-  uiDensity: 'comfortable' | 'compact';
-  enableAnimations: boolean;
-  enableBlur: boolean;
-  miniMode: boolean;
-  miniProgress: boolean;
-  miniCover: boolean;
-  gaplessPlayback: boolean;
-  crossfadeSec: number;
-  autoNormalize: boolean;
-  highQualityMode: boolean;
-  audioDevice: string;
-  audioOutputMode: AudioOutputMode;
-  targetSampleRate: number;
-  musicFolders: string[];
-  autoRescan: boolean;
-  preferEmbeddedTags: boolean;
-  detectDuplicates: boolean;
-  groupByAlbumArtist: boolean;
-  lyricsProvider: 'musixmatch' | 'gemini' | 'lrc';
-  autoSaveLyrics: boolean;
-  preferSyncedLrc: boolean;
-  tagProvider: 'musicbrainz' | 'gemini' | 'discogs';
-  hdCoverArt: boolean;
-  replaceLowQualCover: boolean;
-  saveInsideFile: boolean;
-  enableEnhancement: boolean;
-  autoFixTags: boolean;
-  autoFetchLyrics: boolean;
-  autoUpdateCover: boolean;
-  showStatusIcons: boolean;
-  taskScheduling: 'playback' | 'idle' | 'manual';
-  alwaysOnTop: boolean;
-  visualizationEnabled: boolean;
-  waveformEnabled: boolean;
-  isDefaultPlayer: boolean;
-  minFileSizeMB: number;
-  minDurationSec: number;
-  backupFrequency: 'never' | 'daily' | 'weekly' | 'monthly' | 'on-exit';
-  autoCleanupBackups: boolean;
-  ai: AISettings;
-  sync: {
-    enabled: boolean;
-    provider: 'onedrive' | 'gdrive' | 'dropbox' | 'none';
-    autoSync: boolean;
-    syncOnExit: boolean;
-    conflictStrategy: 'ask' | 'keep-local' | 'keep-cloud' | 'smart-merge';
-    syncTypes: {
-      playlists: boolean;
-      settings: boolean;
-      metadata: boolean;
-      history: boolean;
-      stats: boolean;
-    };
-  };
+export interface QueueState {
+  items: Song[];
+  currentIndex: number;
+  shuffled: boolean;
+  repeatMode: 'all' | 'one' | 'none';
 }
 
-export enum NavigationTab {
-  Home = 'main',
-  Collections = 'collections',
-  Playlists = 'playlist',
-  AllSongs = 'musics',
-  Search = 'search',
-  Queue = 'queue',
-  Downloads = 'downloads',
-  Profile = 'profile',
-  Backup = 'backup',
-  Diagnostics = 'diagnostics',
-  Extensions = 'extensions',
-  AISettings = 'ai-settings',
-  Developer = 'developer',
-  CloudSync = 'cloud-sync',
-  Settings = 'settings',
-  About = 'about',
-  AudioLab = 'audio-lab'
+export interface ThemeDefinition {
+  id: string;
+  name: string;
+  base: 'light' | 'dark';
+  background: string;
+  surface: string;
+  card: string;
+  primary: string;
+  secondary: string;
+  accent: string;
+  textPrimary: string;
+  textSecondary: string;
+  border: string;
 }
 
-export type PlaylistViewMode = 'grid' | 'list';
-export interface QueueState { items: Song[]; currentIndex: number; shuffled: boolean; repeatMode: 'none' | 'one' | 'all'; }
-export enum AudioOutputMode { Shared = 'shared', Exclusive = 'exclusive' }
-export interface ThemeDefinition { id: string; name: string; base: 'light' | 'dark'; background: string; surface: string; card: string; primary: string; secondary: string; accent: string; textPrimary: string; textSecondary: string; border: string; }
-export interface BackupMetadata { id: string; timestamp: number; version: string; type: 'full' | 'partial'; size: number; sections: string[]; itemCount: number; checksum: string; }
-export interface CloudProvider { id: 'onedrive' | 'gdrive' | 'dropbox'; name: string; connected: boolean; lastSync?: number; accountName?: string; }
-export interface AlbumViewModel { name: string; artist: string; year: number; coverUrl: string; songs: Song[]; totalDuration: number; }
-export interface ArtistViewModel { name: string; albums: AlbumViewModel[]; songCount: number; coverUrl: string; }
-export type TaskType = 'lyrics' | 'tags' | 'cover' | 'full-enhancement';
-export type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'paused';
-export interface DownloadTask { id: string; songId: string; songTitle: string; artist: string; coverUrl: string; type: TaskType; status: TaskStatus; progress: number; error?: string; retryCount: number; timestamp: number; }
+export interface BackupMetadata {
+  id: string;
+  timestamp: number;
+  version: string;
+  type: 'full' | 'partial';
+  size: number;
+  sections: string[];
+  itemCount: number;
+  checksum: string;
+}
 
-// Added missing extension types
-export type ExtensionType = 'lyrics-provider' | 'audio-effect' | 'visualization' | 'automation' | 'ui-mod' | 'tag-provider';
+export interface CloudProvider {
+  id: string;
+  name: string;
+  connected: boolean;
+  accountName?: string;
+  lastSync?: number;
+}
 
 export interface MelodixExtension {
   id: string;
@@ -268,7 +273,8 @@ export interface MelodixExtension {
   hasSettings: boolean;
 }
 
-// Added missing scripting types
+export type ExtensionType = 'lyrics-provider' | 'audio-effect' | 'visualization' | 'automation' | 'ui-mod' | 'tag-provider';
+
 export interface MelodixScript {
   id: string;
   name: string;
@@ -286,7 +292,6 @@ export interface AutomationRule {
   enabled: boolean;
 }
 
-// Added missing sync types
 export interface CloudDevice {
   id: string;
   name: string;
@@ -308,7 +313,46 @@ export interface SyncEvent {
 export interface SyncConflict {
   id: string;
   songId: string;
-  localTimestamp: number;
-  remoteTimestamp: number;
-  resolved: boolean;
+  field: string;
+  localValue: any;
+  remoteValue: any;
 }
+
+export interface SmartRuleGroup {
+  id: string;
+  logic: 'and' | 'or';
+  rules: (SmartRule | SmartRuleGroup)[];
+}
+
+export interface SmartRule {
+  id: string;
+  field: FilterField;
+  operator: ConditionOperator;
+  value: any;
+}
+
+export type ConditionOperator = 'is' | 'is-not' | 'contains' | 'not-contains' | 'greater' | 'less' | 'starts' | 'ends';
+
+export type FilterField = 'title' | 'artist' | 'album' | 'genre' | 'year' | 'playCount' | 'duration' | 'hasLyrics';
+
+export interface AudioEffectSettings {
+  bassBoost: number;
+  trebleBoost: number;
+  clarity: number;
+  warmth: number;
+  reverb: {
+    enabled: boolean;
+    type: 'room' | 'hall' | 'plate' | 'cathedral';
+    size: number;
+    decay: number;
+    mix: number;
+  };
+  spatial: {
+    enabled: boolean;
+    depth: number;
+    width: number;
+    mode: 'headphone' | 'speaker';
+  };
+}
+
+export type PlaylistViewMode = 'grid' | 'list' | 'columns';
